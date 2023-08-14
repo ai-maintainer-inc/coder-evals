@@ -33,7 +33,7 @@ def copy_code_to_agent(git_url: str):
 
 def _run_aider_command(container, command):
     # Run the given aider command inside the specified container
-    response = container.exec_run(f"aider-chat {command}")
+    response = container.exec_run(f"sh -c 'aider-chat {command}'", workdir="/code")
     return response.output.decode().strip()
 
 
@@ -53,8 +53,15 @@ def start_agent_task(task_text: str):
     with open("agent.json", "r") as file:
         agent_info = json.load(file)
 
+    current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    # dockerfile_path = current_dir / "aider_config"
+
     client = docker.from_env()
+
+    # Build the Docker image from the Dockerfile
     image_name = "aider-chat-image"
+    client.images.build(path=str(current_dir), tag=image_name)
+
     local_mount_point = agent_info["local_mount_point"]
     agent_mount_point = agent_info["agent_mount_point"]
     openai_api_key = os.environ.get("OPENAI_API_KEY")

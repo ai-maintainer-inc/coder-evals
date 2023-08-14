@@ -22,6 +22,3 @@ WORKDIR /code
 
 # Define the directory as a mount point
 VOLUME ["/code"]
-
-# Entry point for the command-line tool
-ENTRYPOINT ["aider-chat"]
