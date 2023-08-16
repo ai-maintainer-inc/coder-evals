@@ -1,8 +1,8 @@
 import json
-import docker
 import shutil
 import os
 import glob
+import subprocess
 from pathlib import Path
 
 
@@ -15,7 +15,6 @@ def register_agent(code_path: Path):
     """
     agent_info = {
         "local_mount_point": code_path,
-        "agent_mount_point": "/code",
         "state": "idle",
         "ticket_id": None,
     }
@@ -31,60 +30,41 @@ def copy_code_to_agent(git_url: str):
     pass
 
 
-def _run_aider_command(container, command):
-    # Run the given aider command inside the specified container
-    response = container.exec_run(f"sh -c 'aider-chat {command}'", workdir="/code")
-    return response.output.decode().strip()
+def _run_aider_command(command, agent_info):
+    # Run the given aider command
+    response = subprocess.run(
+        f"aider {command}",
+        shell=True,
+        cwd=str(agent_info["local_mount_point"]),
+        capture_output=True,
+    )
+    return response.stdout.decode().strip()
 
 
-def _get_python_files(mount_point, code_path):
+def _get_python_files(code_path):
     # Get all Python files in the code_path directory
     python_files = glob.glob(f"{code_path}/**/*.py", recursive=True)
-
-    # Replace the base path with the mount point
-    python_files_in_container = [
-        file_path.replace(code_path, mount_point) for file_path in python_files
-    ]
-
-    return python_files_in_container
+    return python_files
 
 
 def start_agent_task(task_text: str):
     with open("agent.json", "r") as file:
         agent_info = json.load(file)
 
-    current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-    # dockerfile_path = current_dir / "aider_config"
-
-    client = docker.from_env()
-
-    # Build the Docker image from the Dockerfile
-    image_name = "aider-chat-image"
-    client.images.build(path=str(current_dir), tag=image_name)
-
     local_mount_point = agent_info["local_mount_point"]
-    agent_mount_point = agent_info["agent_mount_point"]
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if openai_api_key is None:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-    # Start the Docker container
-    container = client.containers.run(
-        image_name,
-        volumes={local_mount_point: {"bind": agent_mount_point, "mode": "rw"}},
-        environment={"OPENAI_API_KEY": openai_api_key},
-        detach=True,
-    )
-
-    # Get all Python files in the container's mount point
-    python_files = _get_python_files(agent_info["agent_mount_point"], local_mount_point)
+    # Get all Python files in the local mount point
+    python_files = _get_python_files(local_mount_point)
 
     # Prepare a list of commands to add all Python files at once
     files_to_add = " ".join(python_files)
     add_command = f"/add {files_to_add}"
-    _run_aider_command(container, add_command)
+    _run_aider_command(add_command, agent_info)
 
     # Run aider-chat's /start command
-    _run_aider_command(container, f"/start {task_text}")
+    _run_aider_command(f"/start {task_text}", agent_info)
 
-    return _run_aider_command(container, "/diff")
+    return _run_aider_command("/diff", agent_info)
