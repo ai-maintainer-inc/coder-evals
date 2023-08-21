@@ -47,6 +47,8 @@ def _run_aider_command(command, agent_info, session):
 def _get_python_files(code_path):
     # Get all Python files in the code_path directory
     python_files = glob.glob(f"{code_path}/**/*.py", recursive=True)
+    # Make the file paths relative to the code_path
+    python_files = [os.path.relpath(file, code_path) for file in python_files]
     return python_files
 
 
