@@ -33,20 +33,24 @@ def copy_code_to_agent(git_url: str):
 
 import time
 
-def _run_aider_command(command, agent_info, session):
-    # Run the given aider command in the terminal session
-    session.stdin.write(f"{command}\n".encode())
-    session.stdin.flush()
+def get_terminal_output(session):
     output = []
     while True:
         line = session.stdout.readline().decode().strip()
         if line == '':
-            time.sleep(1)
+            time.sleep(2)
             line = session.stdout.readline().decode().strip()
             if line == '':
                 break
         if line:
             output.append(line)
+    return output
+
+def _run_aider_command(command, agent_info, session):
+    # Run the given aider command in the terminal session
+    session.stdin.write(f"{command}\n".encode())
+    session.stdin.flush()
+    output = get_terminal_output(session)
     return output
 
 
@@ -77,6 +81,9 @@ def start_agent_task(task_text: str):
 
     # Start a new terminal session
     session = start_terminal_session()
+
+    # Get the terminal output after starting a new session
+    initial_output = get_terminal_output(session)
 
     # Get all Python files in the local mount point
     python_files = _get_python_files(local_mount_point)
