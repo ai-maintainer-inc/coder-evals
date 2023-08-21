@@ -64,11 +64,13 @@ def test_aider_can_change_code():
     current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     # Define the code path and register the agent
-    code_path = current_dir / "verification_python/"
-    register_agent(code_path, current_dir)
+    code_path = current_dir / "test_python"
+    register_agent(code_path, current_dir.parent.parent)
 
-    # Identify the specific test that should fail before the bug is fixed
-    failing_test_path = "test_python/json_manipulator.py::TestAgentStateManager::test_overwrite_of_non_updated_fields"
+    # Identify the specific test that should fail before the bug is fixed tests/test_agents/verification_python/json_manipulator_verification.py
+    failing_test_path = (
+        current_dir / "verification_python/json_manipulator_verification.py"
+    )
 
     # Run the test and assert that it fails
     result_before = subprocess.run(
@@ -77,7 +79,7 @@ def test_aider_can_change_code():
     assert result_before.returncode != 0, "The test should fail before the bug is fixed"
 
     # Suppose the task text describes the bug that needs to be fixed
-    task_text = "Fix the bug where non-updated fields are overwritten when reading from the file."
+    task_text = f"Fix a bug where non-updated fields are overwritten when reading from the file."
 
     # Perform the task
     start_agent_task(task_text)

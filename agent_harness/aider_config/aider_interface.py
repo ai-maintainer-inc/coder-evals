@@ -71,8 +71,9 @@ def start_terminal_session(input_history_file_path, chat_history_file_path):
         ["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE
     )
     # Run the aider command in the new terminal session with selected options
+    session.stdin.write("source venv/bin/activate\n".encode())
     command = (
-        f"aider --yes --no-pretty --no-stream --verbose"
+        f"aider --yes --no-pretty --no-stream --verbose --no-auto-commits"
         f" --input-history-file={input_history_file_path}"
         f" --chat-history-file={chat_history_file_path}"
         "\n"

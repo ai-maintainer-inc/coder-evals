@@ -1,6 +1,6 @@
 import json
 import pytest
-from tests.test_agents.test_python.json_manipulator import (
+from tests.test_agents.test_aider_interface import (
     AgentStateManager,
 )  # Assuming the class is defined in agent_state_manager.py
 
