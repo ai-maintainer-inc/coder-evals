@@ -33,7 +33,7 @@ def copy_code_to_agent(git_url: str):
 def _run_aider_command(command, agent_info):
     # Run the given aider command
     response = subprocess.run(
-        f"aider {command}",
+        f"{command}",
         shell=True,
         cwd=str(agent_info["local_mount_point"]),
         capture_output=True,
