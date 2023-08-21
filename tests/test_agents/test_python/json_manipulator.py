@@ -34,7 +34,8 @@ class AgentStateManager:
     def read_from_file(self):
         if os.path.exists(self.file_path):
             with open(self.file_path, "r") as file:
-                self.agent_info = json.load(file)
+                file_content = json.load(file)
+                self.agent_info.update(file_content)
         else:
             print(f"{self.file_path} does not exist.")
 
