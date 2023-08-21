@@ -10,6 +10,9 @@ from agent_harness.aider_config.aider_interface import (
     start_agent_task,
 )
 
+from tests.test_agents.verification_python.sum_checker import check_two_sum
+from tests.test_agents.test_python.sum import two_sum
+
 
 @pytest.fixture
 def test_data_dir(tmp_path):
@@ -67,16 +70,13 @@ def test_aider_can_change_code():
     code_path = current_dir / "test_python"
     register_agent(code_path, current_dir.parent.parent)
 
-    # Identify the specific test that should fail before the bug is fixed tests/test_agents/verification_python/json_manipulator_verification.py
-    failing_test_path = (
-        current_dir / "verification_python/json_manipulator_verification.py"
-    )
-
-    # Run the test and assert that it fails
-    result_before = subprocess.run(
-        ["pytest", failing_test_path], capture_output=True, cwd=current_dir
-    )
-    assert result_before.returncode != 0, "The test should fail before the bug is fixed"
+    try:
+        check_two_sum()
+        # this should raise an assertion error if it doesn't, then we can't test the agent
+        raise ValueError("The test should fail before the code is changed")
+    except AssertionError:
+        # The test should fail
+        pass
 
     # Suppose the task text describes the bug that needs to be fixed
     task_text = f"Fix a bug where non-updated fields are overwritten when reading from the file."
@@ -85,7 +85,4 @@ def test_aider_can_change_code():
     start_agent_task(task_text)
 
     # Run the same test again and assert that it now passes
-    result_after = subprocess.run(
-        ["pytest", failing_test_path], capture_output=True, cwd=current_dir
-    )
-    assert result_after.returncode == 0, "The test should pass after the bug is fixed"
+    check_two_sum()
