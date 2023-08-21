@@ -4,6 +4,7 @@ import os
 import glob
 import subprocess
 from pathlib import Path
+import subprocess
 
 
 def register_agent(code_path: Path):
@@ -47,6 +48,14 @@ def _get_python_files(code_path):
     return python_files
 
 
+def start_terminal_session():
+    # Start a new terminal session
+    session = subprocess.Popen(["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    # Run the aider command in the new terminal session
+    session.stdin.write(b"aider\n")
+    session.stdin.flush()
+    return session
+
 def start_agent_task(task_text: str):
     with open("agent.json", "r") as file:
         agent_info = json.load(file)
@@ -56,15 +65,18 @@ def start_agent_task(task_text: str):
     if openai_api_key is None:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
+    # Start a new terminal session
+    session = start_terminal_session()
+
     # Get all Python files in the local mount point
     python_files = _get_python_files(local_mount_point)
 
     # Prepare a list of commands to add all Python files at once
     files_to_add = " ".join(python_files)
     add_command = f"/add {files_to_add}"
-    _run_aider_command(add_command, agent_info)
+    _run_aider_command(add_command, agent_info, session)
 
     # Run aider-chat's /start command
-    _run_aider_command(f"{task_text}", agent_info)
+    _run_aider_command(f"{task_text}", agent_info, session)
 
-    return _run_aider_command("/diff", agent_info)
+    return _run_aider_command("/diff", agent_info, session)
