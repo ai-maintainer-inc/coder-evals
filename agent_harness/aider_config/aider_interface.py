@@ -65,6 +65,6 @@ def start_agent_task(task_text: str):
     _run_aider_command(add_command, agent_info)
 
     # Run aider-chat's /start command
-    _run_aider_command(f"/start {task_text}", agent_info)
+    _run_aider_command(f"{task_text}", agent_info)
 
     return _run_aider_command("/diff", agent_info)
