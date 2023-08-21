@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 
 
-def register_agent(code_path: Path):
+def register_agent(code_path: Path, aider_path: Path):
     """
     This will write a JSON file locally that stores
     1. where the code mount points are.
@@ -15,9 +15,10 @@ def register_agent(code_path: Path):
     3. What ticket is being worked on (id).
     """
     agent_info = {
-        "local_mount_point": code_path,
+        "local_mount_point": str(code_path),
         "state": "idle",
         "ticket_id": None,
+        "aider_path": str(aider_path),
     }
 
     with open("agent.json", "w") as file:
@@ -48,7 +49,7 @@ def get_terminal_output(session):
     return output
 
 
-def _run_aider_command(command, agent_info, session):
+def _run_aider_command(command, session):
     # Run the given aider command in the terminal session
     session.stdin.write(f"{command}\n".encode())
     session.stdin.flush()
@@ -56,11 +57,11 @@ def _run_aider_command(command, agent_info, session):
     return output
 
 
-def _get_python_files(code_path):
+def _get_python_files(code_path, aider_path):
     # Get all Python files in the code_path directory
     python_files = glob.glob(f"{code_path}/**/*.py", recursive=True)
     # Make the file paths relative to the code_path
-    python_files = [os.path.relpath(file, code_path) for file in python_files]
+    python_files = [os.path.relpath(file, aider_path) for file in python_files]
     return python_files
 
 
@@ -91,15 +92,15 @@ def start_agent_task(task_text: str):
     initial_output = get_terminal_output(session)
 
     # Get all Python files in the local mount point
-    # python_files = _get_python_files(local_mount_point)
+    python_files = _get_python_files(local_mount_point, agent_info["aider_path"])
 
     # Prepare a list of commands to add all Python files at once
-    # files_to_add = " ".join(python_files)
-    add_command = f"/add {local_mount_point}/**/*.py"
-    add_output = _run_aider_command(add_command, agent_info, session)
+    files_to_add = " ".join(python_files)
+    add_command = f"/add {files_to_add}"
+    add_output = _run_aider_command(add_command, session)
 
     # Run aider-chat's /start command
-    start_output = _run_aider_command(f"{task_text}", agent_info, session)
+    start_output = _run_aider_command(f"{task_text}", session)
 
-    diff_output = _run_aider_command("/diff", agent_info, session)
+    diff_output = _run_aider_command("/diff", session)
     return diff_output

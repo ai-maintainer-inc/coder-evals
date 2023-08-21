@@ -65,7 +65,7 @@ def test_aider_can_change_code():
 
     # Define the code path and register the agent
     code_path = current_dir / "verification_python/"
-    register_agent(str(code_path))
+    register_agent(code_path, current_dir)
 
     # Identify the specific test that should fail before the bug is fixed
     failing_test_path = "test_python/json_manipulator.py::TestAgentStateManager::test_overwrite_of_non_updated_fields"
