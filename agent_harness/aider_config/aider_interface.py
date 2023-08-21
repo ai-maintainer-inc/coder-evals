@@ -65,13 +65,19 @@ def _get_python_files(code_path, aider_path):
     return python_files
 
 
-def start_terminal_session():
+def start_terminal_session(input_history_file_path, chat_history_file_path):
     # Start a new terminal session
     session = subprocess.Popen(
         ["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE
     )
-    # Run the aider command in the new terminal session
-    session.stdin.write(b"aider --yes\n")
+    # Run the aider command in the new terminal session with selected options
+    command = (
+        f"aider --yes --no-pretty --no-stream --verbose"
+        f" --input-history-file={input_history_file_path}"
+        f" --chat-history-file={chat_history_file_path}"
+        "\n"
+    )
+    session.stdin.write(command.encode())
     session.stdin.flush()
     return session
 
@@ -86,7 +92,7 @@ def start_agent_task(task_text: str):
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
     # Start a new terminal session
-    session = start_terminal_session()
+    session = start_terminal_session("input_history.txt", "chat_history.txt")
 
     # Get the terminal output after starting a new session
     initial_output = get_terminal_output(session)
