@@ -45,7 +45,8 @@ def _run_aider_command(command, agent_info, session):
             line = session.stdout.readline().decode().strip()
             if line == '':
                 break
-        output.append(line)
+        if line:
+            output.append(line)
     return output
 
 
