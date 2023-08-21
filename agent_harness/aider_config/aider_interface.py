@@ -31,6 +31,8 @@ def copy_code_to_agent(git_url: str):
     pass
 
 
+import time
+
 def _run_aider_command(command, agent_info, session):
     # Run the given aider command in the terminal session
     session.stdin.write(f"{command}\n".encode())
@@ -39,7 +41,10 @@ def _run_aider_command(command, agent_info, session):
     while True:
         line = session.stdout.readline().decode().strip()
         if line == '':
-            break
+            time.sleep(1)
+            line = session.stdout.readline().decode().strip()
+            if line == '':
+                break
         output.append(line)
     return output
 
