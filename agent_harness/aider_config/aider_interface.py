@@ -33,18 +33,20 @@ def copy_code_to_agent(git_url: str):
 
 import time
 
+
 def get_terminal_output(session):
     output = []
     while True:
         line = session.stdout.readline().decode().strip()
-        if line == '':
+        if line == "":
             time.sleep(2)
             line = session.stdout.readline().decode().strip()
-            if line == '':
+            if line == "":
                 break
         if line:
             output.append(line)
     return output
+
 
 def _run_aider_command(command, agent_info, session):
     # Run the given aider command in the terminal session
@@ -64,11 +66,14 @@ def _get_python_files(code_path):
 
 def start_terminal_session():
     # Start a new terminal session
-    session = subprocess.Popen(["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    session = subprocess.Popen(
+        ["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    )
     # Run the aider command in the new terminal session
     session.stdin.write(b"aider\n")
     session.stdin.flush()
     return session
+
 
 def start_agent_task(task_text: str):
     with open("agent.json", "r") as file:
@@ -86,11 +91,11 @@ def start_agent_task(task_text: str):
     initial_output = get_terminal_output(session)
 
     # Get all Python files in the local mount point
-    python_files = _get_python_files(local_mount_point)
+    # python_files = _get_python_files(local_mount_point)
 
     # Prepare a list of commands to add all Python files at once
-    files_to_add = " ".join(python_files)
-    add_command = f"/add {files_to_add}"
+    # files_to_add = " ".join(python_files)
+    add_command = f"/add {local_mount_point}/**/*.py"
     add_output = _run_aider_command(add_command, agent_info, session)
 
     # Run aider-chat's /start command
