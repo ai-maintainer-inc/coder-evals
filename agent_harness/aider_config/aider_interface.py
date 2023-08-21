@@ -35,7 +35,13 @@ def _run_aider_command(command, agent_info, session):
     # Run the given aider command in the terminal session
     session.stdin.write(f"{command}\n".encode())
     session.stdin.flush()
-    return session.stdout.readline().decode().strip()
+    output = []
+    while True:
+        line = session.stdout.readline().decode().strip()
+        if line == '':
+            break
+        output.append(line)
+    return output
 
 
 def _get_python_files(code_path):
@@ -70,9 +76,10 @@ def start_agent_task(task_text: str):
     # Prepare a list of commands to add all Python files at once
     files_to_add = " ".join(python_files)
     add_command = f"/add {files_to_add}"
-    _run_aider_command(add_command, agent_info, session)
+    add_output = _run_aider_command(add_command, agent_info, session)
 
     # Run aider-chat's /start command
-    _run_aider_command(f"{task_text}", agent_info, session)
+    start_output = _run_aider_command(f"{task_text}", agent_info, session)
 
-    return _run_aider_command("/diff", agent_info, session)
+    diff_output = _run_aider_command("/diff", agent_info, session)
+    return diff_output
