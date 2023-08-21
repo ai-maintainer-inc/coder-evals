@@ -71,7 +71,7 @@ def start_terminal_session():
         ["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE
     )
     # Run the aider command in the new terminal session
-    session.stdin.write(b"aider\n")
+    session.stdin.write(b"aider --yes\n")
     session.stdin.flush()
     return session
 
