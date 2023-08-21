@@ -31,15 +31,11 @@ def copy_code_to_agent(git_url: str):
     pass
 
 
-def _run_aider_command(command, agent_info):
-    # Run the given aider command
-    response = subprocess.run(
-        f"{command}",
-        shell=True,
-        cwd=str(agent_info["local_mount_point"]),
-        capture_output=True,
-    )
-    return response.stdout.decode().strip()
+def _run_aider_command(command, agent_info, session):
+    # Run the given aider command in the terminal session
+    session.stdin.write(f"{command}\n".encode())
+    session.stdin.flush()
+    return session.stdout.readline().decode().strip()
 
 
 def _get_python_files(code_path):
