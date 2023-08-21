@@ -22,3 +22,6 @@ WORKDIR /code
 
 # Define the directory as a mount point
 VOLUME ["/code"]
+
+# Run the command "aider" on container start
+CMD ["aider"]
