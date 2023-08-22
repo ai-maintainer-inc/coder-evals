@@ -79,7 +79,7 @@ def test_aider_can_change_code():
         pass
 
     # Suppose the task text describes the bug that needs to be fixed
-    task_text = f"Fix a bug where non-updated fields are overwritten when reading from the file."
+    task_text = f"Fix the `two_sum` function so that it adds values correctly."
 
     # Perform the task
     start_agent_task(task_text)

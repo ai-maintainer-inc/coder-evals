@@ -5,6 +5,10 @@ import glob
 import subprocess
 from pathlib import Path
 import subprocess
+from aider.io import InputOutput
+from aider.coders import Coder
+from aider.models import Model
+from aider.dump import dump
 
 
 def register_agent(code_path: Path, aider_path: Path):
@@ -40,7 +44,7 @@ def get_terminal_output(session):
     while True:
         line = session.stdout.readline().decode().strip()
         if line == "":
-            time.sleep(2)
+            time.sleep(30)
             line = session.stdout.readline().decode().strip()
             if line == "":
                 break
@@ -51,7 +55,7 @@ def get_terminal_output(session):
 
 def _run_aider_command(command, session):
     # Run the given aider command in the terminal session
-    session.stdin.write(f"{command}\n".encode())
+    session.stdin.write(f"{command}\n\n\n".encode())
     session.stdin.flush()
     output = get_terminal_output(session)
     return output
@@ -71,12 +75,11 @@ def start_terminal_session(input_history_file_path, chat_history_file_path):
         ["/bin/bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE
     )
     # Run the aider command in the new terminal session with selected options
-    session.stdin.write("source venv/bin/activate\n".encode())
     command = (
-        f"aider --yes --no-pretty --no-stream --verbose --no-auto-commits"
+        f"aider --yes --no-pretty --verbose --no-auto-commits"
         f" --input-history-file={input_history_file_path}"
         f" --chat-history-file={chat_history_file_path}"
-        "\n"
+        "\n\n"
     )
     session.stdin.write(command.encode())
     session.stdin.flush()
@@ -97,6 +100,7 @@ def start_agent_task(task_text: str):
 
     # Get the terminal output after starting a new session
     initial_output = get_terminal_output(session)
+    print("\n".join(initial_output))
 
     # Get all Python files in the local mount point
     python_files = _get_python_files(local_mount_point, agent_info["aider_path"])
@@ -105,9 +109,8 @@ def start_agent_task(task_text: str):
     files_to_add = " ".join(python_files)
     add_command = f"/add {files_to_add}"
     add_output = _run_aider_command(add_command, session)
+    print("\n".join(add_output))
 
     # Run aider-chat's /start command
     start_output = _run_aider_command(f"{task_text}", session)
-
-    diff_output = _run_aider_command("/diff", session)
-    return diff_output
+    print("\n".join(start_output))
