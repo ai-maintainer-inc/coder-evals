@@ -105,3 +105,6 @@ ENV/
 .vscode/
 .idea/
 .aider*
+
+*.json
+*.txt

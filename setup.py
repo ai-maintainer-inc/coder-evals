@@ -12,8 +12,9 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "Click>=7.0",
-    "agent-marketplace-sdk>=0.1.0",
+    "agent-marketplace-sdk==0.1.3",
     "docker>=4.2.2",
+    "aider-chat>=0.12.0",
 ]
 
 test_requirements = [
