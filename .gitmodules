@@ -1,3 +1,0 @@
-[submodule "agent_harness/agents/aider"]
-	path = agent_harness/agents/aider
-	url = git@github.com:paul-gauthier/aider.git
