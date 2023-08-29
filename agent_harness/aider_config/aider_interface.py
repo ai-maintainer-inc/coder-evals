@@ -1,10 +1,7 @@
 import json
-import shutil
 import os
 import glob
-import subprocess
 from pathlib import Path
-import subprocess
 from aider.io import InputOutput
 from aider.coders import Coder
 from aider.models import Model
@@ -37,9 +34,11 @@ def register_agent(code_path: Path, aider_path: Path, agentName: str) -> Path:
     return Path(filename).absolute()
 
 
-def _get_python_files(code_path, aider_path):
+def _get_files_with_exts(code_path, aider_path, exts):
     # Get all Python files in the code_path directory
-    python_files = glob.glob(f"{code_path}/**/*", recursive=True)
+    all_files = []
+    for ext in exts:
+        all_files.extend(glob.glob(f"{code_path}/**/*.{ext}", recursive=True))
     # Make the file paths relative to the code_path
     python_files = [os.path.relpath(file, aider_path) for file in python_files]
     return python_files

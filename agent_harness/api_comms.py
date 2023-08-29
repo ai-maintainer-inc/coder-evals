@@ -40,19 +40,6 @@ TEMP_DIR = "./deleteme"
 BENCHMARK_IDS = ["dc13a85a-9a5f-4da1-924f-d965cf0982cc"]
 
 
-class PythonClientUser:
-    def __init__(self, username: str, password: str):
-        self.username = username
-        self.password = password
-        self.cfg = openapi_client.Configuration(
-            host=API_HOST,
-            username=self.username,
-            password=self.password,
-        )
-        self.api = openapi_client.ApiClient(self.cfg)
-        self.instance = default_api.DefaultApi(self.api)
-
-
 def get_agents(client):
     """
     Get all agents.
@@ -135,7 +122,7 @@ def check_for_ticket(client, agent_id):
     response = client.instance.create_bid(req)
 
 
-def create_artifacts(client, agent_id):
+def handle_bids(client, agent_id, code_path):
     """
     This calls the agent!
     Modify the call to the agent here.
@@ -187,11 +174,12 @@ def create_artifacts(client, agent_id):
     fork_url = create_url(GIT_HOST, OPERATOR_CODE_OWNER, OPERATOR_CODE_REPO)
     gitrepo.fork(fork_url, force=True)
     fork = GitRepo(fork_url, OPERATOR_USERNAME, OPERATOR_PASSWORD)
-    path = os.environ["CODE_PATH"]
-    print("path:", path)
-    fork.clone(path)
-    start_agent_task(ticket["description"])
+    print("path:", code_path)
+    fork.clone(code_path)
+    return fork, ticket
 
+
+def upload_artifact(client, fork, bid_id: str, path: Path):
     fork.add(path, all=True)
     if fork.has_changes(path):
         fork.commit(path, "add README.md")
@@ -201,7 +189,7 @@ def create_artifacts(client, agent_id):
     req = models.CreateArtifactRequest(
         bidId=bid_id,
         code=models.Code(
-            owner=OPERATOR_CODE_OWNER,
+            owner=client.username,
             repo=OPERATOR_CODE_REPO,
             branch="",
             commit="",
@@ -215,79 +203,3 @@ def create_artifacts(client, agent_id):
 
     # done to make sure we don't loop forever
     return bid_id
-
-    # # create artifact
-    # req = models.CreateArtifactRequest(
-    #     bidId=bid_id,
-    #     code=models.Code(
-    #         owner=OPERATOR_CODE_OWNER,
-    #         repo=OPERATOR_CODE_REPO,
-    #         branch="",
-    #         commit="",
-    #     ),
-    #     draft=False,
-    # )
-    # response = operator.instance.create_artifact(req)
-
-
-def main():
-    # Generate sample agent_data
-    client = PythonClientUser(OPERATOR_USERNAME, OPERATOR_PASSWORD)
-
-    # env variables for the aider path and code path are both defined as env variables in the dockerfile.
-    # CODE_PATH and AIDER_PATH respectively.
-    code_path = Path(os.environ.get("CODE_PATH"))
-    aider_path = Path(os.environ.get("AIDER_PATH"))
-    agent_name = "aiderUnique"
-
-    json_path = register_agent(code_path, aider_path, agent_name)
-    list_agents = get_agents(client)
-    pprint(list_agents)
-    agent_id = check_if_agent_exists(client, agent_name)
-    if not agent_id:
-        print("Agent does not exist. Creating.")
-        agent_id = api_register_agent(client, "aiderUnique")
-        pprint(agent_id)
-
-    for bench_id in BENCHMARK_IDS:
-        req = models.CreateBenchmarkTicketRequest(
-            agentId=agent_id,
-            benchmarkId=bench_id,
-        )
-        response = client.instance.create_benchmark_ticket(req)
-        while True:
-            # poll for tickets assigned to this user
-            response = client.instance.get_agent_tickets(
-                query_params={
-                    "agentId": agent_id,
-                }
-            )
-            tickets = list(response.body["tickets"])
-            print("tickets:", tickets)
-            if len(tickets) == 0:
-                print("No tickets found. Sleeping.")
-                time.sleep(2)
-                continue
-            ticket_id = tickets[0]["ticketId"]
-
-            # create bid
-            req = models.CreateBidRequest(
-                agentId=agent_id,
-                ticketId=ticket_id,
-                rate=0.0,
-            )
-            response = client.instance.create_bid(req)
-            print("response.body:", response.body)
-
-            while True:
-                # wait for the bids to be accepted.
-                bid_id = create_artifacts(client, agent_id)
-                print("bid_id:", bid_id)
-                if bid_id:
-                    return
-
-            time.sleep(2)
-
-
-if __name__ == "__main__":
-    main()
