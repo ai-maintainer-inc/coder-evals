@@ -32,11 +32,16 @@ from openapi_client.model.create_user_request import CreateUserRequest
 from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
 from pprint import pprint
-from agent_harness.api_comms import api_register_agent, handle_bids, upload_artifact
+from agent_harness.api_comms import (
+    api_register_agent,
+    handle_bids,
+    upload_artifact,
+    get_agents,
+)
 
 
 class PythonClientUser:
-    def __init__(self, username: str, password: str, api_host):
+    def __init__(self, username: str, password: str, api_host: str):
         self.username = username
         self.password = password
         self.cfg = openapi_client.Configuration(
@@ -51,8 +56,9 @@ class PythonClientUser:
 def register_user(
     username: str,
     password: str,
+    email: str,
     api_host: str = "https://marketplace-api.ai-maintainer.com/v1",
-) -> None:
+) -> PythonClientUser:
     """
     Allows for the creation of a new user who wants to submit agents for benchmarking.
 
@@ -63,27 +69,33 @@ def register_user(
     Returns:
         None
     """
+    # CLIENT_USERNAME = "test_user1"
+    # CLIENT_PASSWORD = "F@k3awefawefawef"
+    client = PythonClientUser(username, password, api_host)
 
-    # Defining the host is optional and defaults to https://marketplace-api.ai-maintainer.com/v1
-    # See configuration.py for a list of all supported configuration parameters.
-    configuration = openapi_client.Configuration(host=api_host)
+    # create user. expect 201 or 409
+    req = models.CreateUserRequest(userName=username, password=password, email=email)
+    try:
+        response = client.instance.create_user(req)
+        assert response.response.status == 201
+        return client
+    except openapi_client.exceptions.ApiException as e:
+        assert e.status == 409
 
-    # Enter a context with an instance of the API client
-    with openapi_client.ApiClient(configuration) as api_client:
-        # Create an instance of the API class
-        api_instance = default_api.DefaultApi(api_client)
 
-        # Create a request body with user details
-        body = CreateUserRequest(username=username, password=password)
+def fetch_users_agents(client) -> list:
+    """
+    Fetches all agents for a given user.
 
-        try:
-            # Create a user
-            api_response = api_instance.create_user(body=body)
-            pprint(api_response)
-            return PythonClientUser(username, password, api_host)
+    Args:
+        username (str): The username of the user.
+        password (str): The password for the user.
 
-        except openapi_client.ApiException as e:
-            print("Exception when calling DefaultApi->create_user: %s\n" % e)
+    Returns:
+        list: A list of agents.
+    """
+    agents = get_agents(client)
+    return agents
 
 
 def register_agent(client, agent_name: str) -> str:
@@ -99,6 +111,15 @@ def register_agent(client, agent_name: str) -> str:
     Returns:
         str: agent_id
     """
+    agents = get_agents(client)
+    for agent in agents:
+        if agent["agentName"] == agent_name:
+            if agent["userName"] == client.username:
+                raise ValueError("User already has an agent with this name.")
+            else:
+                raise PermissionError(
+                    f"Agent name {agent_name} is already taken by another user."
+                )
     return api_register_agent(client, agent_name)
 
 
@@ -161,10 +182,11 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
 
         while True:
             # wait for the bids to be accepted.
-            bid_id, ticket = handle_bids(client, agent_id, code_path)
-            print("bid_id:", bid_id)
-            if bid_id:
-                return bid_id, ticket
+            fork, bid_id, ticket = handle_bids(client, agent_id, code_path)
+            print("fork:", fork)
+            if fork:
+                return fork, bid_id, ticket
+            time.sleep(0.5)
 
 
 def ask_question(ticket_id: int, question: str) -> None:
@@ -172,7 +194,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     Allows the agent to ask a clarifying question before starting work on a ticket.
 
     Args:
-        ticket_id (int): The ID of the ticket.
+        ticket_id (int): The ID of t    he ticket.
         question (str): The question being asked.
 
     Returns:

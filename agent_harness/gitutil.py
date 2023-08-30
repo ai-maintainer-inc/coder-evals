@@ -17,6 +17,13 @@ class GitRepo:
             f"http.extraHeader=Authorization: Basic {self._encoded_credentials}"
         )
 
+    def print_std_streams(self, result):
+        if result:
+            if result.stderr:
+                print(result.stderr.decode())
+            if result.stdout:
+                print(result.stdout.decode())
+
     def clone(self, directory):
         command = ["git", "-c", self.auth_header, "clone", self.url, directory]
         result = subprocess.run(
@@ -25,8 +32,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def fetch(self, directory):
         command = ["git", "-C", directory, "-c", self.auth_header, "fetch"]
@@ -37,8 +43,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def pull(self, directory, branch=None):
         command = ["git", "-C", directory, "-c", self.auth_header, "pull", "origin"]
@@ -50,8 +55,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def push(self, directory, branch=None, force=False):
         command = ["git", "-C", directory, "-c", self.auth_header, "push", "origin"]
@@ -65,8 +69,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def checkout(self, directory, branch=None):
         if not branch:
@@ -78,8 +81,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def create_branch(self, directory, branch=None):
         if not branch:
@@ -91,8 +93,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def merge(self, directory, branch=None):
         if not branch:
@@ -104,8 +105,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def add(self, directory, files=".", all=False):
         command = ["git", "-C", directory, "add"]
@@ -119,8 +119,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def commit(self, directory, message):
         if not message:
@@ -133,8 +132,7 @@ class GitRepo:
             stderr=subprocess.PIPE,
             check=True,
         )
-        print(result.stdout.decode())
-        print(result.stderr.decode())
+        self.print_std_streams(result)
 
     def has_changes(self, directory):
         command = ["git", "-C", directory, "status", "--porcelain"]
@@ -169,8 +167,6 @@ class GitRepo:
                 stderr=subprocess.PIPE,
                 check=True,
             )
-            print(result.stdout.decode())
-            print(result.stderr.decode())
 
             # Push the contents to the fork URL, with force if specified
             push_command = [
@@ -192,8 +188,7 @@ class GitRepo:
                 # stderr=subprocess.PIPE,
                 check=True,
             )
-            print(result.stdout.decode())
-            print(result.stderr.decode())
+            self.print_std_streams(result)
 
         # The temporary directory and its contents will be deleted when the context is exited
 

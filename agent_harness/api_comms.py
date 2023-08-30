@@ -13,15 +13,11 @@ from openapi_client.apis.tags import default_api
 from openapi_client.model.create_agent_request import CreateAgentRequest
 from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
-from pprint import pprint
-import uuid
 from pathlib import Path
-import os
-import time
 import shutil
 
 # update this import to use your interface here!
-from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
+# from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
 from agent_harness.gitutil import GitRepo, create_url
 
 
@@ -123,10 +119,6 @@ def check_for_ticket(client, agent_id):
 
 
 def handle_bids(client, agent_id, code_path):
-    """
-    This calls the agent!
-    Modify the call to the agent here.
-    """
     # get agent bids
     response = client.instance.get_agent_bids(
         query_params={
@@ -136,7 +128,7 @@ def handle_bids(client, agent_id, code_path):
     )
     bids = list(response.body["bids"])
     if len(bids) == 0:
-        return None
+        return None, None, None
     print("pending bids:", bids)
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
@@ -153,7 +145,7 @@ def handle_bids(client, agent_id, code_path):
             ticket = ticket
             break
     if ticket is None:
-        return None
+        return None, None, None
     print("ticket:", ticket)
     # get the code from the ticket
     code = ticket["code"]
@@ -176,7 +168,7 @@ def handle_bids(client, agent_id, code_path):
     fork = GitRepo(fork_url, OPERATOR_USERNAME, OPERATOR_PASSWORD)
     print("path:", code_path)
     fork.clone(code_path)
-    return fork, ticket
+    return fork, bid_id, ticket
 
 
 def upload_artifact(client, fork, bid_id: str, path: Path):
