@@ -14,6 +14,7 @@ requirements = [
     "Click>=7.0",
     "agent-marketplace-sdk==0.1.3",
     "docker>=4.2.2",
+    "ai_maintainer_git_util>=0.1.0",
 ]
 
 test_requirements = [
