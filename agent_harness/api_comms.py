@@ -18,7 +18,7 @@ import shutil
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
-from agent_harness.gitutil import GitRepo, create_url
+from ai_maintainer_git_util.ai_maintainer_git_util import GitRepo, create_url
 
 
 API_HOST = "http://marketplace-api:8080/api/v1"
