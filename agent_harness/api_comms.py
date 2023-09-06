@@ -15,25 +15,23 @@ from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
 from pathlib import Path
 import shutil
+import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
 from ai_maintainer_git_util.ai_maintainer_git_util import GitRepo, create_url
 
 
-API_HOST = "http://marketplace-api:8080/api/v1"
-GIT_HOST = "http://git-server:8080"
-CLIENT_USERNAME = "test_user1"
-CLIENT_PASSWORD = "F@k3awefawefawef"
-CLIENT_CODE_OWNER = CLIENT_USERNAME
-CLIENT_CODE_REPO = "repo1"
-OPERATOR_USERNAME = "test_user2"
-OPERATOR_PASSWORD = "F@k3awefawefawef"
-OPERATOR_CODE_OWNER = OPERATOR_USERNAME
-OPERATOR_CODE_REPO = "repo2"
-TEMP_DIR = "./deleteme"
+# API_HOST = "http://marketplace-api:8080/api/v1"
+# GIT_HOST = "http://git-server:8080"
+# CLIENT_USERNAME = "test_user1"
 
-BENCHMARK_IDS = ["dc13a85a-9a5f-4da1-924f-d965cf0982cc"]
+# CLIENT_CODE_OWNER = CLIENT_USERNAME
+# CLIENT_CODE_REPO = "repo1"
+# OPERATOR_USERNAME = "test_user2"
+# OPERATOR_PASSWORD = "F@k3awefawefawef"
+# OPERATOR_CODE_OWNER = OPERATOR_USERNAME
+# OPERATOR_CODE_REPO = "repo2"
 
 
 def get_agents(client):
@@ -51,7 +49,11 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    return response.body
+    print(response)
+    print(response.body)
+    agents = response.body["agents"]
+    print(agents)
+    return agents
 
 
 def api_register_agent(user, agent_name):
@@ -149,10 +151,11 @@ def handle_bids(client, agent_id, code_path):
     print("ticket:", ticket)
     # get the code from the ticket
     code = ticket["code"]
+    repo = code["repo"]
 
     # fork the code
     req = models.CreateRepositoryRequest(
-        repositoryName=OPERATOR_CODE_REPO,
+        repositoryName=repo,
         isPublic=False,
     )
     try:
@@ -161,17 +164,20 @@ def handle_bids(client, agent_id, code_path):
     except openapi_client.ApiException as e:
         assert e.status == 409
 
-    url = create_url(GIT_HOST, code["owner"], code["repo"])
-    gitrepo = GitRepo(url, OPERATOR_USERNAME, OPERATOR_PASSWORD)
-    fork_url = create_url(GIT_HOST, OPERATOR_CODE_OWNER, OPERATOR_CODE_REPO)
+    url = create_url(client.git_host, code["owner"], code["repo"])
+    gitrepo = GitRepo(url, client.username, client.password)
+    fork_url = create_url(client.git_host, client.username, repo)
     gitrepo.fork(fork_url, force=True)
-    fork = GitRepo(fork_url, OPERATOR_USERNAME, OPERATOR_PASSWORD)
+    fork = GitRepo(fork_url, client.username, client.password)
     print("path:", code_path)
-    fork.clone(code_path)
-    return fork, bid_id, ticket
+    fork.clone(code_path + "/" + repo)
+    return fork, bid_id, ticket, code_path + "/" + repo
 
 
-def upload_artifact(client, fork, bid_id: str, path: Path):
+def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
+    # list all files in repo path:
+    files = glob.glob(path + "/**/*", recursive=True)
+    print("\n\nfilesin repo path:", files)
     fork.add(path, all=True)
     if fork.has_changes(path):
         fork.commit(path, "add README.md")
@@ -182,7 +188,7 @@ def upload_artifact(client, fork, bid_id: str, path: Path):
         bidId=bid_id,
         code=models.Code(
             owner=client.username,
-            repo=OPERATOR_CODE_REPO,
+            repo=repo,
             branch="",
             commit="",
         ),

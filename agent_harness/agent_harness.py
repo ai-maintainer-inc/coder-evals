@@ -39,11 +39,19 @@ from agent_harness.api_comms import (
     get_agents,
 )
 
+from typing import List, Optional, Union, Tuple
+from datetime import datetime
+from openapi_client import ApiClient
+from openapi_client.model.benchmarks_response import BenchmarksResponse
+from openapi_client.model.errors_response import ErrorsResponse
+from pathlib import Path
+
 
 class PythonClientUser:
-    def __init__(self, username: str, password: str, api_host: str):
+    def __init__(self, username: str, password: str, api_host: str, git_host: str):
         self.username = username
         self.password = password
+        self.git_host = git_host
         self.cfg = openapi_client.Configuration(
             host=api_host,
             username=self.username,
@@ -57,7 +65,8 @@ def register_user(
     username: str,
     password: str,
     email: str,
-    api_host: str = "https://marketplace-api.ai-maintainer.com/v1",
+    api_host: str = "https://api-ai-maintainer-7ovqsdkn2q-uc.a.run.app/api/v1",
+    git_host: str = "https://git-server-7ovqsdkn2q-uc.a.run.app",
 ) -> PythonClientUser:
     """
     Allows for the creation of a new user who wants to submit agents for benchmarking.
@@ -69,9 +78,7 @@ def register_user(
     Returns:
         None
     """
-    # CLIENT_USERNAME = "test_user1"
-    # CLIENT_PASSWORD = "F@k3awefawefawef"
-    client = PythonClientUser(username, password, api_host)
+    client = PythonClientUser(username, password, api_host, git_host)
 
     # create user. expect 201 or 409
     req = models.CreateUserRequest(userName=username, password=password, email=email)
@@ -113,6 +120,7 @@ def register_agent(client, agent_name: str) -> str:
     """
     agents = get_agents(client)
     for agent in agents:
+        print("agent:", agent)
         if agent["agentName"] == agent_name:
             if agent["userName"] == client.username:
                 raise ValueError("User already has an agent with this name.")
@@ -123,21 +131,75 @@ def register_agent(client, agent_name: str) -> str:
     return api_register_agent(client, agent_name)
 
 
-def get_benchmark_ids(
-    client, category: list = [], name: str = None, version: str = "latest"
-) -> list:
+def get_benchmarks(
+    client: ApiClient,
+    benchmark_id: Optional[str] = None,
+    author_id: Optional[str] = None,
+    author_name: Optional[str] = None,
+    title_search: Optional[str] = None,
+    difficulty_above: Optional[float] = None,
+    difficulty_below: Optional[float] = None,
+    page_size: Optional[int] = None,
+    page: Optional[int] = None,
+    before: Optional[datetime] = None,
+    after: Optional[datetime] = None,
+    order_by: Optional[str] = None,
+    order: Optional[str] = None,
+) -> Union[List[str], ErrorsResponse]:
     """
-    Allows for querying of benchmarks so users can easily choose what benchmarks they want to run.
+    Get all benchmark tasks from the API, allowing for various query parameters.
+    Returns a list of benchmark IDs.
 
     Args:
-        category (list, optional): The category of benchmarks. Defaults to [].
-        name (str, optional): The name of the benchmark. Defaults to None.
-        version (str, optional): The version of the benchmark. Defaults to 'latest'.
+        client (ApiClient): The API client instance.
+        benchmark_id (Optional[str]): The ID of the benchmark.
+        author_id (Optional[str]): The ID of the author.
+        author_name (Optional[str]): The name of the author.
+        title_search (Optional[str]): Text to search in the title.
+        difficulty_above (Optional[float]): Minimum difficulty.
+        difficulty_below (Optional[float]): Maximum difficulty.
+        page_size (Optional[int]): Number of items per page.
+        page (Optional[int]): Page number.
+        before (Optional[datetime]): Created before this date-time.
+        after (Optional[datetime]): Created after this date-time.
+        order_by (Optional[str]): Order by field.
+        order (Optional[str]): Order direction.
 
     Returns:
-        list: A list of benchmark IDs.
+        Union[List[str], ErrorsResponse]: List of benchmark IDs or ErrorsResponse.
     """
-    return ["c62e6410-2a95-4392-a21c-5f9a6a067230"]
+    query_params = {
+        "benchmarkId": benchmark_id,
+        "authorId": author_id,
+        "authorName": author_name,
+        "titleSearch": title_search,
+        "difficultyAbove": difficulty_above,
+        "difficultyBelow": difficulty_below,
+        "pageSize": page_size,
+        "page": page,
+        "before": before,
+        "after": after,
+        "orderBy": order_by,
+        "order": order,
+    }
+
+    try:
+        api_response = client.instance.get_benchmarks(query_params=query_params)
+
+        # Extracting benchmark IDs from the response
+        print("api_response.body:", api_response.body)
+        benchmarks = api_response.body.get("benchmarks", [])
+        benchmark_ids = [
+            benchmark.get("benchmarkId")
+            for benchmark in benchmarks
+            if "benchmarkId" in benchmark
+        ]
+
+        return benchmark_ids
+
+    except openapi_client.ApiException as e:
+        print(f"Exception when calling DefaultApi->get_benchmarks: {e}")
+        return ErrorsResponse(errors=[{"message": str(e)}])
 
 
 def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
@@ -182,10 +244,10 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
 
         while True:
             # wait for the bids to be accepted.
-            fork, bid_id, ticket = handle_bids(client, agent_id, code_path)
+            fork, bid_id, ticket, cloned_path = handle_bids(client, agent_id, code_path)
             print("fork:", fork)
             if fork:
-                return fork, bid_id, ticket
+                return fork, bid_id, ticket, cloned_path
             time.sleep(0.5)
 
 
@@ -203,7 +265,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     return "No"
 
 
-def submit_artifact(client, fork, bid_id: str, path: Path) -> None:
+def submit_artifact(client, fork, repo: str, bid_id: str, path: Path) -> None:
     """
     Called when the agent is ready to submit the artifact. This will cause the code to be pushed to our git repo.
 
@@ -213,4 +275,4 @@ def submit_artifact(client, fork, bid_id: str, path: Path) -> None:
     Returns:
         None
     """
-    upload_artifact(client, fork, bid_id, path)
+    upload_artifact(client, fork, repo, bid_id, path)
