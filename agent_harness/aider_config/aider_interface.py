@@ -1,10 +1,7 @@
 import json
-import shutil
 import os
 import glob
-import subprocess
 from pathlib import Path
-import subprocess
 from aider.io import InputOutput
 from aider.coders import Coder
 from aider.models import Model
@@ -12,27 +9,36 @@ from aider.dump import dump
 import openai
 
 
-def register_agent(code_path: Path, aider_path: Path):
+def register_agent(code_path: Path, aider_path: Path, agentName: str) -> Path:
     """
     This will write a JSON file locally that stores
     1. where the code mount points are.
     2. What the state of the agent is.
     3. What ticket is being worked on (id).
     """
-    agent_info = {
-        "local_mount_point": str(code_path),
-        "state": "idle",
-        "ticket_id": None,
-        "aider_path": str(aider_path),
-    }
+    # if there is no agent.json file, create one, otherwise return the path to the existing one
+    filename = f"{agentName}.json"
+    if not Path(filename).exists():
+        agent_info = {
+            "agentName": agentName,
+            "local_mount_point": str(code_path),
+            "state": 0,
+            "ticket_id": None,
+            "aider_path": str(aider_path),
+        }
 
-    with open("agent.json", "w") as file:
-        json.dump(agent_info, file)
+        with open(filename, "w") as file:
+            json.dump(agent_info, file)
+
+    # return the path of the agent.json
+    return Path(filename).absolute()
 
 
-def _get_python_files(code_path, aider_path):
+def _get_files_with_exts(code_path, aider_path, exts):
     # Get all Python files in the code_path directory
-    python_files = glob.glob(f"{code_path}/**/*.py", recursive=True)
+    all_files = []
+    for ext in exts:
+        all_files.extend(glob.glob(f"{code_path}/**/*.{ext}", recursive=True))
     # Make the file paths relative to the code_path
     python_files = [os.path.relpath(file, aider_path) for file in python_files]
     return python_files
@@ -75,6 +81,4 @@ def start_agent_task(task_text: str):
         pretty=False,
         verbose=True,
     )
-
-    timeouts = 0
     coder.run(with_message=task_text)

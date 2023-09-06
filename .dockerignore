@@ -1,0 +1,6 @@
+venv/
+tests/
+docs/
+*.egg-info/
+.pytest*
+.vscode/
