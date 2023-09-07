@@ -14,7 +14,7 @@ requirements = [
     "Click>=7.0",
     "agent-marketplace-sdk==0.1.6",
     "docker>=4.2.2",
-    "ai_maintainer_git_util>=0.1.0",
+    "ai_maintainer_git_util>=0.1.1",
 ]
 
 test_requirements = [
@@ -51,6 +51,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/dschonholtz/agent_harness",
-    version="0.1.6",
+    version="0.1.7",
     zip_safe=False,
 )

@@ -65,8 +65,8 @@ def register_user(
     username: str,
     password: str,
     email: str,
-    api_host: str = "https://api-ai-maintainer-7ovqsdkn2q-uc.a.run.app/api/v1",
-    git_host: str = "https://git-server-7ovqsdkn2q-uc.a.run.app",
+    api_host: str = "https://platform.ai-maintainer.com/api/v1",
+    git_host: str = "https://git.ai-maintainer.com",
 ) -> PythonClientUser:
     """
     Allows for the creation of a new user who wants to submit agents for benchmarking.
@@ -120,7 +120,7 @@ def register_agent(client, agent_name: str) -> str:
     """
     agents = get_agents(client)
     for agent in agents:
-        print("agent:", agent)
+        # print("agent:", agent)
         if agent["agentName"] == agent_name:
             if agent["userName"] == client.username:
                 raise ValueError("User already has an agent with this name.")
@@ -187,7 +187,7 @@ def get_benchmarks(
         api_response = client.instance.get_benchmarks(query_params=query_params)
 
         # Extracting benchmark IDs from the response
-        print("api_response.body:", api_response.body)
+        # print("api_response.body:", api_response.body)
         benchmarks = api_response.body.get("benchmarks", [])
         benchmark_ids = [
             benchmark.get("benchmarkId")
@@ -226,7 +226,7 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
             }
         )
         tickets = list(response.body["tickets"])
-        print("tickets:", tickets)
+        # print("tickets:", tickets)
         if len(tickets) == 0:
             print("No tickets found. Sleeping.")
             time.sleep(2)
@@ -240,7 +240,7 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
             rate=0.0,
         )
         response = client.instance.create_bid(req)
-        print("response.body:", response.body)
+        # print("response.body:", response.body)
 
         while True:
             # wait for the bids to be accepted.
@@ -275,4 +275,4 @@ def submit_artifact(client, fork, repo: str, bid_id: str, path: Path) -> None:
     Returns:
         None
     """
-    upload_artifact(client, fork, repo, bid_id, path)
+    return upload_artifact(client, fork, repo, bid_id, path)

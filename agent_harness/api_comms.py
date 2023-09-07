@@ -19,7 +19,7 @@ import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
-from ai_maintainer_git_util.ai_maintainer_git_util import GitRepo, create_url
+from ai_maintainer_git_util.git_util import GitRepo, create_url
 
 
 # API_HOST = "http://marketplace-api:8080/api/v1"
@@ -49,10 +49,10 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    print(response)
-    print(response.body)
+    # print(response)
+    # print(response.body)
     agents = response.body["agents"]
-    print(agents)
+    # print(agents)
     return agents
 
 
@@ -77,7 +77,7 @@ def api_register_agent(user, agent_name):
     )
 
     response = user.instance.create_agent(req)
-    print("response.body:", response.body)
+    # print("response.body:", response.body)
     agent_id = response.body["agentId"]
     return agent_id
 
@@ -131,7 +131,7 @@ def handle_bids(client, agent_id, code_path):
     bids = list(response.body["bids"])
     if len(bids) == 0:
         return None, None, None
-    print("pending bids:", bids)
+    # print("pending bids:", bids)
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
     response = client.instance.get_agent_tickets(
@@ -196,8 +196,5 @@ def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
     )
     response = client.instance.create_artifact(req)
 
-    # remove fork repo
-    shutil.rmtree(path)
-
     # done to make sure we don't loop forever
-    return bid_id
+    return response
