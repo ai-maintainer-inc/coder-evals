@@ -9,29 +9,13 @@ It will then go through the API steps 1 by 1.
 
 """
 import openapi_client
-from openapi_client.apis.tags import default_api
-from openapi_client.model.create_agent_request import CreateAgentRequest
-from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
 from pathlib import Path
-import shutil
 import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
-from ai_maintainer_git_util.ai_maintainer_git_util import GitRepo, create_url
-
-
-# API_HOST = "http://marketplace-api:8080/api/v1"
-# GIT_HOST = "http://git-server:8080"
-# CLIENT_USERNAME = "test_user1"
-
-# CLIENT_CODE_OWNER = CLIENT_USERNAME
-# CLIENT_CODE_REPO = "repo1"
-# OPERATOR_USERNAME = "test_user2"
-# OPERATOR_PASSWORD = "F@k3awefawefawef"
-# OPERATOR_CODE_OWNER = OPERATOR_USERNAME
-# OPERATOR_CODE_REPO = "repo2"
+from ai_maintainer_git_util.git_util import GitRepo, create_url
 
 
 def get_agents(client):
@@ -64,7 +48,7 @@ def api_register_agent(user, agent_name):
     - username (str): The username for authentication.
     - password (str): The password for authentication.
     - agent_data (dict): The data for the agent to be registered. Should adhere to the Agent model's structure.
-    - host (str): The base URL for the API. Defaults to https://marketplace-api.ai-maintainer.com/v1.
+    - host (str): The base URL for the API. Defaults to https://platform.ai-maintainer.com/v1.
 
     Returns:
     - dict: The created agent's data or error information.
@@ -196,8 +180,5 @@ def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
     )
     response = client.instance.create_artifact(req)
 
-    # remove fork repo
-    shutil.rmtree(path)
-
     # done to make sure we don't loop forever
-    return bid_id
+    return response

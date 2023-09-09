@@ -15,7 +15,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://github.com/dschonholtz/agent_harness/issues.
+Report bugs at https://github.com/ai-maintainer-inc/agent_harness/issues.
 
 If you are reporting a bug, please include:
 
