@@ -45,7 +45,7 @@ articles, and such.
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://github.com/dschonholtz/agent_harness/issues.
+The best way to send feedback is to file an issue at https://github.com/ai-maintainer-inc/agent_harness/issues.
 
 If you are proposing a feature:
 
@@ -102,7 +102,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 3.5, 3.6, 3.7 and 3.8, and for PyPy. Check
+3. The pull request should work for Python 3.8, 3.9 and 3.10 and for PyPy. Check
    https://travis-ci.com/dschonholtz/agent_harness/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
@@ -121,6 +121,7 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
+$ pip install bump2version
 $ bump2version patch # possible: major / minor / patch
 $ git push
 $ git push --tags
