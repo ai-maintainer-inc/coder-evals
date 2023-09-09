@@ -9,29 +9,13 @@ It will then go through the API steps 1 by 1.
 
 """
 import openapi_client
-from openapi_client.apis.tags import default_api
-from openapi_client.model.create_agent_request import CreateAgentRequest
-from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
 from pathlib import Path
-import shutil
 import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
-from ai_maintainer_git_util.ai_maintainer_git_util import GitRepo, create_url
-
-
-# API_HOST = "http://marketplace-api:8080/api/v1"
-# GIT_HOST = "http://git-server:8080"
-# CLIENT_USERNAME = "test_user1"
-
-# CLIENT_CODE_OWNER = CLIENT_USERNAME
-# CLIENT_CODE_REPO = "repo1"
-# OPERATOR_USERNAME = "test_user2"
-# OPERATOR_PASSWORD = "F@k3awefawefawef"
-# OPERATOR_CODE_OWNER = OPERATOR_USERNAME
-# OPERATOR_CODE_REPO = "repo2"
+from ai_maintainer_git_util.git_util import GitRepo, create_url
 
 
 def get_agents(client):
@@ -49,10 +33,7 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    print(response)
-    print(response.body)
     agents = response.body["agents"]
-    print(agents)
     return agents
 
 
@@ -64,7 +45,7 @@ def api_register_agent(user, agent_name):
     - username (str): The username for authentication.
     - password (str): The password for authentication.
     - agent_data (dict): The data for the agent to be registered. Should adhere to the Agent model's structure.
-    - host (str): The base URL for the API. Defaults to https://marketplace-api.ai-maintainer.com/v1.
+    - host (str): The base URL for the API. Defaults to https://platform.ai-maintainer.com/v1.
 
     Returns:
     - dict: The created agent's data or error information.
@@ -77,7 +58,6 @@ def api_register_agent(user, agent_name):
     )
 
     response = user.instance.create_agent(req)
-    print("response.body:", response.body)
     agent_id = response.body["agentId"]
     return agent_id
 
@@ -131,7 +111,6 @@ def handle_bids(client, agent_id, code_path):
     bids = list(response.body["bids"])
     if len(bids) == 0:
         return None, None, None
-    print("pending bids:", bids)
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
     response = client.instance.get_agent_tickets(
@@ -148,7 +127,6 @@ def handle_bids(client, agent_id, code_path):
             break
     if ticket is None:
         return None, None, None
-    print("ticket:", ticket)
     # get the code from the ticket
     code = ticket["code"]
     repo = code["repo"]
@@ -169,7 +147,6 @@ def handle_bids(client, agent_id, code_path):
     fork_url = create_url(client.git_host, client.username, repo)
     gitrepo.fork(fork_url, force=True)
     fork = GitRepo(fork_url, client.username, client.password)
-    print("path:", code_path)
     fork.clone(code_path + "/" + repo)
     return fork, bid_id, ticket, code_path + "/" + repo
 
@@ -177,7 +154,6 @@ def handle_bids(client, agent_id, code_path):
 def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
     # list all files in repo path:
     files = glob.glob(path + "/**/*", recursive=True)
-    print("\n\nfilesin repo path:", files)
     fork.add(path, all=True)
     if fork.has_changes(path):
         fork.commit(path, "add README.md")
@@ -196,8 +172,5 @@ def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
     )
     response = client.instance.create_artifact(req)
 
-    # remove fork repo
-    shutil.rmtree(path)
-
     # done to make sure we don't loop forever
-    return bid_id
+    return response

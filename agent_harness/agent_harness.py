@@ -1,37 +1,12 @@
-"""
-This is a file that has the following implemented.
-
-# allows for the creation of a new user who wants to submit agents for benchmarking
-register_user(username, password)
-
-# allows for the creation of a new agent
-register_agent(username, password, agent_name, code_path)
-
-# allows for querying of benchmarks so users can easily choose what benchmarks they want to run
-get_benchmark_ids(category=[], name=None, version='latest')
-
-# starts the process of running a benchmark with the given id when this returns the agent can start working on the code
-start_benchmark(id)
-
-# allows the agent to ask a clarifying question before starting work on a ticket
-ask_question(ticket_id, question)
-
-# called when the agent is ready to submit the artifact. This will cause the code to be pushed to our git repo
-submit_artifact(workspace: Path)
-"""
-
-
 from pathlib import Path
 import time
-
-
+import os
 import openapi_client
 from openapi_client.apis.tags import default_api
 from openapi_client.model.user import User
 from openapi_client.model.create_user_request import CreateUserRequest
 from openapi_client.model.errors_response import ErrorsResponse
 from openapi_client import models
-from pprint import pprint
 from agent_harness.api_comms import (
     api_register_agent,
     handle_bids,
@@ -41,17 +16,21 @@ from agent_harness.api_comms import (
 
 from typing import List, Optional, Union, Tuple
 from datetime import datetime
-from openapi_client import ApiClient
-from openapi_client.model.benchmarks_response import BenchmarksResponse
 from openapi_client.model.errors_response import ErrorsResponse
 from pathlib import Path
+from dataclasses import dataclass
 
 
 class PythonClientUser:
-    def __init__(self, username: str, password: str, api_host: str, git_host: str):
+    """
+    This is a class that represents a user of the Python Client and allows connection with the API and git host.
+    It has prod default values and allows easy authentication and user creation to our API.
+    """
+    def __init__(self, username: str, password: str, email: str, api_host: str, git_host: str):
         self.username = username
         self.password = password
         self.git_host = git_host
+        self.email = email
         self.cfg = openapi_client.Configuration(
             host=api_host,
             username=self.username,
@@ -60,14 +39,27 @@ class PythonClientUser:
         self.api = openapi_client.ApiClient(self.cfg)
         self.instance = default_api.DefaultApi(self.api)
 
+def _get_client():
+    """
+    This is a function that returns a PythonClientUser object with the default values.
+    It also fetches the values from the environment variables and raises errors if any of them are not set.
+    """
+    username = os.getenv("AIM_USERNAME", None)
+    password = os.getenv("AIM_PASSWORD", None)
+    email = os.getenv("AIM_EMAIL", None)
+    host = os.getenv("AIM_API_HOST", "https://platform.ai-maintainer.com/api/v1")
+    git_host = os.getenv("AIM_GIT_HOST", "https://git.ai-maintainer.com")
+    if not username:
+        raise ValueError("AIM_USERNAME is not set.")
+    if not password:
+        raise ValueError("AIM_PASSWORD is not set.")
+    if not email:
+        raise ValueError("AIM_EMAIL is not set.")
 
-def register_user(
-    username: str,
-    password: str,
-    email: str,
-    api_host: str = "https://api-ai-maintainer-7ovqsdkn2q-uc.a.run.app/api/v1",
-    git_host: str = "https://git-server-7ovqsdkn2q-uc.a.run.app",
-) -> PythonClientUser:
+    return PythonClientUser(username, password, email, host, git_host)
+
+
+def _register_user() -> PythonClientUser:
     """
     Allows for the creation of a new user who wants to submit agents for benchmarking.
 
@@ -78,10 +70,10 @@ def register_user(
     Returns:
         None
     """
-    client = PythonClientUser(username, password, api_host, git_host)
+    client = _get_client()
 
     # create user. expect 201 or 409
-    req = models.CreateUserRequest(userName=username, password=password, email=email)
+    req = models.CreateUserRequest(userName=client.username, password=client.password, email=client.email)
     try:
         response = client.instance.create_user(req)
         assert response.response.status == 201
@@ -89,8 +81,37 @@ def register_user(
     except openapi_client.exceptions.ApiException as e:
         assert e.status == 409
 
+def maybe_register_user():
+    """Get or make a user."""
+    client = _register_user()
+    if not client:
+        client = _get_client()
+    return client
 
-def fetch_users_agents(client) -> list:
+def maybe_create_agent(agent_name: str) -> str:
+    """
+    This function allows for the creation of a new agent, if the agent with that name doesn't already exist for this user.
+    If the agent already exists for your user we just fetch it and return the agent_id.
+    Either way you get the correct associated agent_id.
+
+    Args:
+        username (str): The username of the user.
+    
+    Returns:
+        str: agent_id
+    """
+    agents = _fetch_users_agents()
+    agent_id = None
+    for agent in agents:
+        if agent["agentName"] == agent_name:
+            agent_id = agent["agentId"]
+            break
+
+    if not agent_id:
+        agent_id = _register_agent(agent_name)
+    return agent_id
+
+def _fetch_users_agents() -> list:
     """
     Fetches all agents for a given user.
 
@@ -101,11 +122,12 @@ def fetch_users_agents(client) -> list:
     Returns:
         list: A list of agents.
     """
+    client = _get_client()
     agents = get_agents(client)
     return agents
 
 
-def register_agent(client, agent_name: str) -> str:
+def _register_agent(agent_name: str) -> str:
     """
     Allows for the creation of a new agent.
 
@@ -118,9 +140,9 @@ def register_agent(client, agent_name: str) -> str:
     Returns:
         str: agent_id
     """
+    client = _get_client()
     agents = get_agents(client)
     for agent in agents:
-        print("agent:", agent)
         if agent["agentName"] == agent_name:
             if agent["userName"] == client.username:
                 raise ValueError("User already has an agent with this name.")
@@ -131,8 +153,7 @@ def register_agent(client, agent_name: str) -> str:
     return api_register_agent(client, agent_name)
 
 
-def get_benchmarks(
-    client: ApiClient,
+def get_benchmark_ids(
     benchmark_id: Optional[str] = None,
     author_id: Optional[str] = None,
     author_name: Optional[str] = None,
@@ -168,6 +189,7 @@ def get_benchmarks(
     Returns:
         Union[List[str], ErrorsResponse]: List of benchmark IDs or ErrorsResponse.
     """
+    client = _get_client()
     query_params = {
         "benchmarkId": benchmark_id,
         "authorId": author_id,
@@ -185,9 +207,6 @@ def get_benchmarks(
 
     try:
         api_response = client.instance.get_benchmarks(query_params=query_params)
-
-        # Extracting benchmark IDs from the response
-        print("api_response.body:", api_response.body)
         benchmarks = api_response.body.get("benchmarks", [])
         benchmark_ids = [
             benchmark.get("benchmarkId")
@@ -201,18 +220,32 @@ def get_benchmarks(
         print(f"Exception when calling DefaultApi->get_benchmarks: {e}")
         return ErrorsResponse(errors=[{"message": str(e)}])
 
+@dataclass
+class StartBenchmarkResult:
+    fork: bool
+    bid_id: str
+    ticket: dict
+    cloned_path: Path
 
-def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
+def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> StartBenchmarkResult:
     """
     Starts the process of running a benchmark with the given id. When this returns, the agent can start working on the code.
 
     Args:
         id (int): The ID of the benchmark.
         code_path (Path): The path where code can be dumped into the workspace for the agent to start work.
+        agent_id (str): The ID of the agent.
 
     Returns:
         None
     """
+    client = _get_client()
+    if not agent_id:
+        agent_name = os.getenv("AIM_AGENT_NAME", None)
+        if not agent_name:
+            raise ValueError("AIM_AGENT_NAME is not set and no agent_id was passed to start_benchmark.")
+        agent_id = maybe_create_agent(agent_name)
+
     req = models.CreateBenchmarkTicketRequest(
         agentId=agent_id,
         benchmarkId=id,
@@ -226,7 +259,6 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
             }
         )
         tickets = list(response.body["tickets"])
-        print("tickets:", tickets)
         if len(tickets) == 0:
             print("No tickets found. Sleeping.")
             time.sleep(2)
@@ -240,14 +272,11 @@ def start_benchmark(client, id: int, code_path: Path, agent_id: str) -> None:
             rate=0.0,
         )
         response = client.instance.create_bid(req)
-        print("response.body:", response.body)
-
         while True:
             # wait for the bids to be accepted.
             fork, bid_id, ticket, cloned_path = handle_bids(client, agent_id, code_path)
-            print("fork:", fork)
             if fork:
-                return fork, bid_id, ticket, cloned_path
+                return StartBenchmarkResult(fork, bid_id, ticket, cloned_path)
             time.sleep(0.5)
 
 
@@ -256,7 +285,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     Allows the agent to ask a clarifying question before starting work on a ticket.
 
     Args:
-        ticket_id (int): The ID of t    he ticket.
+        ticket_id (int): The ID of the ticket.
         question (str): The question being asked.
 
     Returns:
@@ -265,7 +294,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     return "No"
 
 
-def submit_artifact(client, fork, repo: str, bid_id: str, path: Path) -> None:
+def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, str]:
     """
     Called when the agent is ready to submit the artifact. This will cause the code to be pushed to our git repo.
 
@@ -275,4 +304,54 @@ def submit_artifact(client, fork, repo: str, bid_id: str, path: Path) -> None:
     Returns:
         None
     """
-    upload_artifact(client, fork, repo, bid_id, path)
+    response = upload_artifact(
+        _get_client(), 
+        start_benchmark_result.fork, 
+        start_benchmark_result.ticket["code"]["repo"], 
+        start_benchmark_result.bid_id, 
+        start_benchmark_result.cloned_path
+    )
+    benchmark_artifact_id = response.body["artifactId"]
+    return _get_artifact_status(benchmark_artifact_id)
+
+def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
+    """
+    This assumes your agent has already submitted an artifact and is waiting for it to be evaluated.
+    This polls the API for the status of the artifact and returns the status and logs after evaluation has finished.
+
+    Args:
+        benchmark_artifact_id (str): The ID of the artifact.
+    
+    Returns:
+        Tuple[str, str]: The status of the artifact and the logs.
+    """
+    client = _get_client()
+    response = client.instance.get_agents()
+    agents = list(response.body["agents"])
+    agent_id = agents[0]["agentId"]
+
+    # poll for benchmark artifact status
+    query_params = {
+        "agentId": agent_id,
+        "artifactId": benchmark_artifact_id,
+    }
+
+    status = None
+    for i in range(12):
+        response = client.instance.get_agent_artifacts(query_params=query_params)
+        artifacts = list(response.body["artifacts"])
+        if len(artifacts) == 0:
+            raise ValueError("No artifacts were created.")
+        elif artifacts[0]["status"] == "pending":
+            print("Waiting for evaluator. Sleeping for 5 seconds")
+            time.sleep(5)
+            continue
+
+        status = artifacts[0]["status"]
+        break
+
+    if not status:
+        raise ValueError("Failed to get benchmark artifact status")
+    logs = "Sorry, logs aren't available in this version of the Agent Harness.\n\nThey will be available in an upcoming version."
+
+    return status, logs
