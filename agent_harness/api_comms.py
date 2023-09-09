@@ -33,10 +33,7 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    print(response)
-    print(response.body)
     agents = response.body["agents"]
-    print(agents)
     return agents
 
 
@@ -61,7 +58,6 @@ def api_register_agent(user, agent_name):
     )
 
     response = user.instance.create_agent(req)
-    print("response.body:", response.body)
     agent_id = response.body["agentId"]
     return agent_id
 
@@ -115,7 +111,6 @@ def handle_bids(client, agent_id, code_path):
     bids = list(response.body["bids"])
     if len(bids) == 0:
         return None, None, None
-    print("pending bids:", bids)
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
     response = client.instance.get_agent_tickets(
@@ -132,7 +127,6 @@ def handle_bids(client, agent_id, code_path):
             break
     if ticket is None:
         return None, None, None
-    print("ticket:", ticket)
     # get the code from the ticket
     code = ticket["code"]
     repo = code["repo"]
@@ -153,7 +147,6 @@ def handle_bids(client, agent_id, code_path):
     fork_url = create_url(client.git_host, client.username, repo)
     gitrepo.fork(fork_url, force=True)
     fork = GitRepo(fork_url, client.username, client.password)
-    print("path:", code_path)
     fork.clone(code_path + "/" + repo)
     return fork, bid_id, ticket, code_path + "/" + repo
 
@@ -161,7 +154,6 @@ def handle_bids(client, agent_id, code_path):
 def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
     # list all files in repo path:
     files = glob.glob(path + "/**/*", recursive=True)
-    print("\n\nfilesin repo path:", files)
     fork.add(path, all=True)
     if fork.has_changes(path):
         fork.commit(path, "add README.md")

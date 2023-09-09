@@ -18,6 +18,7 @@ from typing import List, Optional, Union, Tuple
 from datetime import datetime
 from openapi_client.model.errors_response import ErrorsResponse
 from pathlib import Path
+from dataclasses import dataclass
 
 
 class PythonClientUser:
@@ -142,7 +143,6 @@ def _register_agent(agent_name: str) -> str:
     client = _get_client()
     agents = get_agents(client)
     for agent in agents:
-        print("agent:", agent)
         if agent["agentName"] == agent_name:
             if agent["userName"] == client.username:
                 raise ValueError("User already has an agent with this name.")
@@ -153,7 +153,7 @@ def _register_agent(agent_name: str) -> str:
     return api_register_agent(client, agent_name)
 
 
-def get_benchmarks(
+def get_benchmark_ids(
     benchmark_id: Optional[str] = None,
     author_id: Optional[str] = None,
     author_name: Optional[str] = None,
@@ -207,9 +207,6 @@ def get_benchmarks(
 
     try:
         api_response = client.instance.get_benchmarks(query_params=query_params)
-
-        # Extracting benchmark IDs from the response
-        print("api_response.body:", api_response.body)
         benchmarks = api_response.body.get("benchmarks", [])
         benchmark_ids = [
             benchmark.get("benchmarkId")
@@ -223,8 +220,14 @@ def get_benchmarks(
         print(f"Exception when calling DefaultApi->get_benchmarks: {e}")
         return ErrorsResponse(errors=[{"message": str(e)}])
 
+@dataclass
+class StartBenchmarkResult:
+    fork: bool
+    bid_id: str
+    ticket: dict
+    cloned_path: Path
 
-def start_benchmark(id: int, code_path: Path, agent_id: str) -> None:
+def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> StartBenchmarkResult:
     """
     Starts the process of running a benchmark with the given id. When this returns, the agent can start working on the code.
 
@@ -237,6 +240,12 @@ def start_benchmark(id: int, code_path: Path, agent_id: str) -> None:
         None
     """
     client = _get_client()
+    if not agent_id:
+        agent_name = os.getenv("AIM_AGENT_NAME", None)
+        if not agent_name:
+            raise ValueError("AIM_AGENT_NAME is not set and no agent_id was passed to start_benchmark.")
+        agent_id = maybe_create_agent(agent_name)
+
     req = models.CreateBenchmarkTicketRequest(
         agentId=agent_id,
         benchmarkId=id,
@@ -250,7 +259,6 @@ def start_benchmark(id: int, code_path: Path, agent_id: str) -> None:
             }
         )
         tickets = list(response.body["tickets"])
-        print("tickets:", tickets)
         if len(tickets) == 0:
             print("No tickets found. Sleeping.")
             time.sleep(2)
@@ -264,14 +272,11 @@ def start_benchmark(id: int, code_path: Path, agent_id: str) -> None:
             rate=0.0,
         )
         response = client.instance.create_bid(req)
-        print("response.body:", response.body)
-
         while True:
             # wait for the bids to be accepted.
             fork, bid_id, ticket, cloned_path = handle_bids(client, agent_id, code_path)
-            print("fork:", fork)
             if fork:
-                return fork, bid_id, ticket, cloned_path
+                return StartBenchmarkResult(fork, bid_id, ticket, cloned_path)
             time.sleep(0.5)
 
 
@@ -289,7 +294,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     return "No"
 
 
-def submit_artifact(fork, repo: str, bid_id: str, path: Path) -> None:
+def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, str]:
     """
     Called when the agent is ready to submit the artifact. This will cause the code to be pushed to our git repo.
 
@@ -299,9 +304,17 @@ def submit_artifact(fork, repo: str, bid_id: str, path: Path) -> None:
     Returns:
         None
     """
-    return upload_artifact(_get_client(), fork, repo, bid_id, path)
+    response = upload_artifact(
+        _get_client(), 
+        start_benchmark_result.fork, 
+        start_benchmark_result.ticket["code"]["repo"], 
+        start_benchmark_result.bid_id, 
+        start_benchmark_result.cloned_path
+    )
+    benchmark_artifact_id = response.body["artifactId"]
+    return _get_artifact_status(benchmark_artifact_id)
 
-def get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
+def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
     """
     This assumes your agent has already submitted an artifact and is waiting for it to be evaluated.
     This polls the API for the status of the artifact and returns the status and logs after evaluation has finished.
@@ -339,6 +352,6 @@ def get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
 
     if not status:
         raise ValueError("Failed to get benchmark artifact status")
-    logs = "Sorry, lots aren't available in this version of the Agent Harness.\n\nThey will be available in an upcoming version."
+    logs = "Sorry, logs aren't available in this version of the Agent Harness.\n\nThey will be available in an upcoming version."
 
     return status, logs
