@@ -1,5 +1,5 @@
 =============
-Agent Harness
+coder_evals
 =============
 
 
@@ -20,13 +20,14 @@ AI Maintainer Agent Harness for our benchmarking and Marketplace API and platfor
 
 
 * Free software: MIT license
-* Documentation: https://agent-harness.readthedocs.io.
+* Documentation: https://docs.ai-maintainer.com
 
 
 Features
 --------
 
-* TODO
+* Integration with the AI-Maintainer evaluation suite
+* Infrastructure to bring in full git repos for coding agents and to test them against your bot.
 
 Credits
 -------
