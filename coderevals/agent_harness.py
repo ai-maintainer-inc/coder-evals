@@ -7,7 +7,7 @@ from aim_platform_sdk.models.user import User
 from aim_platform_sdk.models.create_user_request import CreateUserRequest
 from aim_platform_sdk.models.errors_response import ErrorsResponse
 from aim_platform_sdk import models
-from coder_evals.api_comms import (
+from coderevals.api_comms import (
     api_register_agent,
     handle_bids,
     upload_artifact,
