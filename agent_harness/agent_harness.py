@@ -1,12 +1,12 @@
 from pathlib import Path
 import time
 import os
-import openapi_client
-from openapi_client.apis.tags import default_api
-from openapi_client.model.user import User
-from openapi_client.model.create_user_request import CreateUserRequest
-from openapi_client.model.errors_response import ErrorsResponse
-from openapi_client import models
+import aim_platform_sdk
+from aim_platform_sdk.api import default_api
+from aim_platform_sdk.models.user import User
+from aim_platform_sdk.models.create_user_request import CreateUserRequest
+from aim_platform_sdk.models.errors_response import ErrorsResponse
+from aim_platform_sdk import models
 from agent_harness.api_comms import (
     api_register_agent,
     handle_bids,
@@ -16,7 +16,7 @@ from agent_harness.api_comms import (
 
 from typing import List, Optional, Union, Tuple
 from datetime import datetime
-from openapi_client.model.errors_response import ErrorsResponse
+from aim_platform_sdk.models.errors_response import ErrorsResponse
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -26,18 +26,22 @@ class PythonClientUser:
     This is a class that represents a user of the Python Client and allows connection with the API and git host.
     It has prod default values and allows easy authentication and user creation to our API.
     """
-    def __init__(self, username: str, password: str, email: str, api_host: str, git_host: str):
+
+    def __init__(
+        self, username: str, password: str, email: str, api_host: str, git_host: str
+    ):
         self.username = username
         self.password = password
         self.git_host = git_host
         self.email = email
-        self.cfg = openapi_client.Configuration(
+        self.cfg = aim_platform_sdk.Configuration(
             host=api_host,
             username=self.username,
             password=self.password,
         )
-        self.api = openapi_client.ApiClient(self.cfg)
+        self.api = aim_platform_sdk.ApiClient(self.cfg)
         self.instance = default_api.DefaultApi(self.api)
+
 
 def _get_client():
     """
@@ -73,13 +77,16 @@ def _register_user() -> PythonClientUser:
     client = _get_client()
 
     # create user. expect 201 or 409
-    req = models.CreateUserRequest(userName=client.username, password=client.password, email=client.email)
+    req = models.CreateUserRequest(
+        userName=client.username, password=client.password, email=client.email
+    )
     try:
         response = client.instance.create_user(req)
         assert response.response.status == 201
         return client
-    except openapi_client.exceptions.ApiException as e:
+    except aim_platform_sdk.exceptions.ApiException as e:
         assert e.status == 409
+
 
 def maybe_register_user():
     """Get or make a user."""
@@ -87,6 +94,7 @@ def maybe_register_user():
     if not client:
         client = _get_client()
     return client
+
 
 def maybe_create_agent(agent_name: str) -> str:
     """
@@ -96,7 +104,7 @@ def maybe_create_agent(agent_name: str) -> str:
 
     Args:
         username (str): The username of the user.
-    
+
     Returns:
         str: agent_id
     """
@@ -110,6 +118,7 @@ def maybe_create_agent(agent_name: str) -> str:
     if not agent_id:
         agent_id = _register_agent(agent_name)
     return agent_id
+
 
 def _fetch_users_agents() -> list:
     """
@@ -190,24 +199,24 @@ def get_benchmark_ids(
         Union[List[str], ErrorsResponse]: List of benchmark IDs or ErrorsResponse.
     """
     client = _get_client()
-    query_params = {
-        "benchmarkId": benchmark_id,
-        "authorId": author_id,
-        "authorName": author_name,
-        "titleSearch": title_search,
-        "difficultyAbove": difficulty_above,
-        "difficultyBelow": difficulty_below,
-        "pageSize": page_size,
-        "page": page,
-        "before": before,
-        "after": after,
-        "orderBy": order_by,
-        "order": order,
-    }
 
     try:
-        api_response = client.instance.get_benchmarks(query_params=query_params)
-        benchmarks = api_response.body.get("benchmarks", [])
+        api_response = client.instance.get_benchmarks(
+            benchmark_id=benchmark_id,
+            author_id=author_id,
+            author_name=author_name,
+            title_search=title_search,
+            difficulty_above=difficulty_above,
+            difficulty_below=difficulty_below,
+            page_size=page_size,
+            page=page,
+            before=before,
+            after=after,
+            order_by=order_by,
+            order=order,
+        )
+        print(api_response)
+        benchmarks = api_response.benchmarks
         benchmark_ids = [
             benchmark.get("benchmarkId")
             for benchmark in benchmarks
@@ -216,18 +225,22 @@ def get_benchmark_ids(
 
         return benchmark_ids
 
-    except openapi_client.ApiException as e:
+    except aim_platform_sdk.ApiException as e:
         print(f"Exception when calling DefaultApi->get_benchmarks: {e}")
         return ErrorsResponse(errors=[{"message": str(e)}])
 
+
 @dataclass
 class StartBenchmarkResult:
-    fork: bool
+    fork: str
     bid_id: str
     ticket: dict
     cloned_path: Path
 
-def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> StartBenchmarkResult:
+
+def start_benchmark(
+    id: int, code_path: Path, agent_id: str = None
+) -> StartBenchmarkResult:
     """
     Starts the process of running a benchmark with the given id. When this returns, the agent can start working on the code.
 
@@ -243,7 +256,9 @@ def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> StartBenc
     if not agent_id:
         agent_name = os.getenv("AIM_AGENT_NAME", None)
         if not agent_name:
-            raise ValueError("AIM_AGENT_NAME is not set and no agent_id was passed to start_benchmark.")
+            raise ValueError(
+                "AIM_AGENT_NAME is not set and no agent_id was passed to start_benchmark."
+            )
         agent_id = maybe_create_agent(agent_name)
 
     req = models.CreateBenchmarkTicketRequest(
@@ -254,11 +269,9 @@ def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> StartBenc
     while True:
         # poll for tickets assigned to this user
         response = client.instance.get_agent_tickets(
-            query_params={
-                "agentId": agent_id,
-            }
+            agent_id=agent_id,
         )
-        tickets = list(response.body["tickets"])
+        tickets = list(response["tickets"])
         if len(tickets) == 0:
             print("No tickets found. Sleeping.")
             time.sleep(2)
@@ -305,14 +318,15 @@ def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, 
         None
     """
     response = upload_artifact(
-        _get_client(), 
-        start_benchmark_result.fork, 
-        start_benchmark_result.ticket["code"]["repo"], 
-        start_benchmark_result.bid_id, 
-        start_benchmark_result.cloned_path
+        _get_client(),
+        start_benchmark_result.fork,
+        start_benchmark_result.ticket["code"]["repo"],
+        start_benchmark_result.bid_id,
+        start_benchmark_result.cloned_path,
     )
-    benchmark_artifact_id = response.body["artifactId"]
+    benchmark_artifact_id = response.artifact_id
     return _get_artifact_status(benchmark_artifact_id)
+
 
 def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
     """
@@ -321,25 +335,23 @@ def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
 
     Args:
         benchmark_artifact_id (str): The ID of the artifact.
-    
+
     Returns:
         Tuple[str, str]: The status of the artifact and the logs.
     """
     client = _get_client()
     response = client.instance.get_agents()
-    agents = list(response.body["agents"])
+    agents = list(response.agents)
     agent_id = agents[0]["agentId"]
 
     # poll for benchmark artifact status
-    query_params = {
-        "agentId": agent_id,
-        "artifactId": benchmark_artifact_id,
-    }
 
     status = None
     for i in range(12):
-        response = client.instance.get_agent_artifacts(query_params=query_params)
-        artifacts = list(response.body["artifacts"])
+        response = client.instance.get_agent_artifacts(
+            agent_id=agent_id, artifact_id=benchmark_artifact_id
+        )
+        artifacts = list(response.artifacts)
         if len(artifacts) == 0:
             raise ValueError("No artifacts were created.")
         elif artifacts[0]["status"] == "pending":

@@ -8,14 +8,14 @@ It will then go through the API steps 1 by 1.
 
 
 """
-import openapi_client
-from openapi_client import models
+import aim_platform_sdk
+from aim_platform_sdk import models
 from pathlib import Path
 import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
-from ai_maintainer_git_util.git_util import GitRepo, create_url
+from aim_git_util.git_util import GitRepo, create_url
 
 
 def get_agents(client):
@@ -33,7 +33,7 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    agents = response.body["agents"]
+    agents = response.agents
     return agents
 
 
@@ -58,7 +58,7 @@ def api_register_agent(user, agent_name):
     )
 
     response = user.instance.create_agent(req)
-    agent_id = response.body["agentId"]
+    agent_id = response.agentId
     return agent_id
 
 
@@ -75,7 +75,7 @@ def check_if_agent_exists(user, agent_name):
 
     # Get all agents
     response = user.instance.get_agents()
-    agents = response.body["agents"]
+    agents = response.agents
     for agent in agents:
         if agent["agentName"] == agent_name.lower():
             return agent["agentId"]
@@ -103,22 +103,18 @@ def check_for_ticket(client, agent_id):
 def handle_bids(client, agent_id, code_path):
     # get agent bids
     response = client.instance.get_agent_bids(
-        query_params={
-            "agentId": agent_id,
-            "status": "pending",
-        }
+        agent_id=agent_id,
+        status="pending",
     )
-    bids = list(response.body["bids"])
+    bids = list(response["bids"])
     if len(bids) == 0:
         return None, None, None
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
     response = client.instance.get_agent_tickets(
-        query_params={
-            "agentId": agent_id,
-        }
+        agent_id=agent_id,
     )
-    tickets = list(response.body["tickets"])
+    tickets = list(response["tickets"])
     ticket = None
     # find the ticket with the same ticketId as the bid
     for ticket in tickets:
@@ -139,7 +135,7 @@ def handle_bids(client, agent_id, code_path):
     try:
         response = client.instance.create_repository(req)
         assert response.response.status == 201
-    except openapi_client.ApiException as e:
+    except aim_platform_sdk.ApiException as e:
         assert e.status == 409
 
     url = create_url(client.git_host, code["owner"], code["repo"])

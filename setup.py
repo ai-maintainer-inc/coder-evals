@@ -12,9 +12,9 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "Click>=7.0",
-    "agent-marketplace-sdk==0.1.6",
+    "aim-platform-sdk==0.1.1",
     "docker>=4.2.2",
-    "ai_maintainer_git_util>=0.1.1",
+    "aim-git-util>=0.1.1",
 ]
 
 test_requirements = [
@@ -22,7 +22,7 @@ test_requirements = [
 ]
 
 setup(
-    author="Douglas Schonholtz",
+    author="AI Maintainer Inc",
     author_email="douglas@ai-maintainer.com",
     python_requires=">=3.8",
     classifiers=[
@@ -46,11 +46,11 @@ setup(
     long_description=readme + "\n\n" + history,
     include_package_data=True,
     keywords="agent_harness",
-    name="agent_harness",
+    name="aim_agent_harness",
     packages=find_packages(include=["agent_harness", "agent_harness.*"]),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/dschonholtz/agent_harness",
-    version='0.1.10',
+    url="https://github.com/ai-maintainer-inc/agent_harness",
+    version='0.1.0',
     zip_safe=False,
 )
