@@ -36,11 +36,6 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     description="AI Maintainer Agent Harness for our benchmarking and Marketplace API and platform",
-    entry_points={
-        "console_scripts": [
-            "coder_evals=coder_evals.coder_evals",
-        ],
-    },
     install_requires=requirements,
     license="MIT license",
     long_description=readme + "\n\n" + history,
