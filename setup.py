@@ -12,7 +12,7 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "Click>=7.0",
-    "aim-platform-sdk>=0.1.1",
+    "aim-platform-sdk>=0.1.3",
     "docker>=4.2.2",
     "aim-git-util>=0.1.1",
 ]
