@@ -8,7 +8,7 @@ History
 * First release on PyPI.
 
 
-0.1.2 (2023-09-13)
+0.1.1 (2023-09-13)
 ------------------
 
 * Open source preparation

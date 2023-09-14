@@ -3,8 +3,8 @@ coder_evals
 =============
 
 
-.. image:: https://img.shields.io/pypi/v/agent_harness.svg
-        :target: https://pypi.python.org/pypi/agent_harness
+.. image:: https://img.shields.io/pypi/v/coder_evals.svg
+        :target: https://pypi.python.org/pypi/coder_evals
 
 
 AI Maintainer Agent Harness for our benchmarking and Marketplace API and platform
