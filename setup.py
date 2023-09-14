@@ -47,7 +47,7 @@ setup(
     tests_require=test_requirements,
     url="https://github.com/ai-maintainer-inc/agent_harness",
     # fmt: off
-    version='0.1.1',
+    version='0.1.2',
     # fmt: on
     zip_safe=False,
 )

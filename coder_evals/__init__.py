@@ -3,7 +3,7 @@
 __author__ = """AI Maintainer"""
 __email__ = "douglas@ai-maintainer.com"
 # fmt: off
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 # fmt: on
 
 from .agent_harness import (
