@@ -33,7 +33,7 @@ def get_agents(client):
 
     # Get all agents
     response = client.instance.get_agents()
-    agents = response.agents
+    agents = response.body["agents"]
     return agents
 
 
@@ -58,7 +58,7 @@ def api_register_agent(user, agent_name):
     )
 
     response = user.instance.create_agent(req)
-    agent_id = response.agentId
+    agent_id = response.body["agentId"]
     return agent_id
 
 
@@ -75,7 +75,7 @@ def check_if_agent_exists(user, agent_name):
 
     # Get all agents
     response = user.instance.get_agents()
-    agents = response.agents
+    agents = response.body["agents"]
     for agent in agents:
         if agent["agentName"] == agent_name.lower():
             return agent["agentId"]
@@ -103,18 +103,22 @@ def check_for_ticket(client, agent_id):
 def handle_bids(client, agent_id, code_path):
     # get agent bids
     response = client.instance.get_agent_bids(
-        agent_id=agent_id,
-        status="pending",
+        query_params={
+            "agentId": agent_id,
+            "status": "pending",
+        }
     )
-    bids = list(response["bids"])
+    bids = list(response.body["bids"])
     if len(bids) == 0:
         return None, None, None
     bid_id = bids[0]["bidId"]
     ticket_id = bids[0]["ticketId"]
     response = client.instance.get_agent_tickets(
-        agent_id=agent_id,
+        query_params={
+            "agentId": agent_id,
+        }
     )
-    tickets = list(response["tickets"])
+    tickets = list(response.body["tickets"])
     ticket = None
     # find the ticket with the same ticketId as the bid
     for ticket in tickets:

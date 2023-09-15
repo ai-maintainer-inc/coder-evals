@@ -2,10 +2,10 @@ from pathlib import Path
 import time
 import os
 import aim_platform_sdk
-from aim_platform_sdk.api import default_api
-from aim_platform_sdk.models.user import User
-from aim_platform_sdk.models.create_user_request import CreateUserRequest
-from aim_platform_sdk.models.errors_response import ErrorsResponse
+from aim_platform_sdk.apis.tags import default_api
+from aim_platform_sdk.model.user import User
+from aim_platform_sdk.model.create_user_request import CreateUserRequest
+from aim_platform_sdk.model.errors_response import ErrorsResponse
 from aim_platform_sdk import models
 from coder_evals.api_comms import (
     api_register_agent,
@@ -16,7 +16,7 @@ from coder_evals.api_comms import (
 
 from typing import List, Optional, Union, Tuple
 from datetime import datetime
-from aim_platform_sdk.models.errors_response import ErrorsResponse
+from aim_platform_sdk.model.errors_response import ErrorsResponse
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -200,23 +200,24 @@ def get_benchmark_ids(
     """
     client = _get_client()
 
+    query_params = {
+        "benchmarkId": benchmark_id,
+        "authorId": author_id,
+        "authorName": author_name,
+        "titleSearch": title_search,
+        "difficultyAbove": difficulty_above,
+        "difficultyBelow": difficulty_below,
+        "pageSize": page_size,
+        "page": page,
+        "before": before,
+        "after": after,
+        "orderBy": order_by,
+        "order": order,
+    }
+
     try:
-        api_response = client.instance.get_benchmarks(
-            benchmark_id=benchmark_id,
-            author_id=author_id,
-            author_name=author_name,
-            title_search=title_search,
-            difficulty_above=difficulty_above,
-            difficulty_below=difficulty_below,
-            page_size=page_size,
-            page=page,
-            before=before,
-            after=after,
-            order_by=order_by,
-            order=order,
-        )
-        print(api_response)
-        benchmarks = api_response.benchmarks
+        api_response = client.instance.get_benchmarks(query_params=query_params)
+        benchmarks = api_response.body.get("benchmarks", [])
         benchmark_ids = [
             benchmark.get("benchmarkId")
             for benchmark in benchmarks
@@ -269,9 +270,11 @@ def start_benchmark(
     while True:
         # poll for tickets assigned to this user
         response = client.instance.get_agent_tickets(
-            agent_id=agent_id,
+            query_params={
+                "agentId": agent_id,
+            }
         )
-        tickets = list(response["tickets"])
+        tickets = list(response.body["tickets"])
         if len(tickets) == 0:
             print("No tickets found. Sleeping.")
             time.sleep(2)
@@ -324,7 +327,7 @@ def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, 
         start_benchmark_result.bid_id,
         start_benchmark_result.cloned_path,
     )
-    benchmark_artifact_id = response.artifact_id
+    benchmark_artifact_id = response.body["artifactId"]
     return _get_artifact_status(benchmark_artifact_id)
 
 
@@ -341,17 +344,19 @@ def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
     """
     client = _get_client()
     response = client.instance.get_agents()
-    agents = list(response.agents)
+    agents = list(response.body["agents"])
     agent_id = agents[0]["agentId"]
 
     # poll for benchmark artifact status
+    query_params = {
+        "agentId": agent_id,
+        "artifactId": benchmark_artifact_id,
+    }
 
     status = None
     for i in range(12):
-        response = client.instance.get_agent_artifacts(
-            agent_id=agent_id, artifact_id=benchmark_artifact_id
-        )
-        artifacts = list(response.artifacts)
+        response = client.instance.get_agent_artifacts(query_params=query_params)
+        artifacts = list(response.body["artifacts"])
         if len(artifacts) == 0:
             raise ValueError("No artifacts were created.")
         elif artifacts[0]["status"] == "pending":

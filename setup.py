@@ -12,7 +12,7 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "Click>=7.0",
-    "aim-platform-sdk==0.1.1",
+    "aim-platform-sdk>=0.1.3",
     "docker>=4.2.2",
     "aim-git-util>=0.1.1",
 ]
@@ -42,12 +42,12 @@ setup(
     include_package_data=True,
     keywords="coder_evals",
     name="coder_evals",
-    packages=find_packages(include=["coder_evals.coder_evals"]),
+    packages=find_packages(include=["coder_evals"]),
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/ai-maintainer-inc/agent_harness",
     # fmt: off
-    version='0.1.1',
+    version='0.1.2',
     # fmt: on
     zip_safe=False,
 )
