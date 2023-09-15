@@ -7,7 +7,7 @@ coder_evals
         :target: https://pypi.python.org/pypi/coder_evals
 
 
-AI Maintainer Agent Harness for our benchmarking and Marketplace API and platform
+AI Maintainer Coder-Evals for benchmarking your coding agent
 
 Documentation: https://docs.ai-maintainer.com/
 
