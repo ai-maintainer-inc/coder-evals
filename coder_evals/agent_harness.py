@@ -304,24 +304,23 @@ def submit_artifact(ctx: BenchmarkContext) -> Tuple[str, str]:
         ctx.cloned_path,
     )
     benchmark_artifact_id = response.body["artifactId"]
-    return _get_artifact_status(benchmark_artifact_id)
+    agent_id = ctx.ticket["agentId"]
+    return _get_artifact_status(benchmark_artifact_id, agent_id)
 
 
-def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
+def _get_artifact_status(benchmark_artifact_id: str, agent_id: str) -> Tuple[str, str]:
     """
     This assumes your agent has already submitted an artifact and is waiting for it to be evaluated.
     This polls the API for the status of the artifact and returns the status and logs after evaluation has finished.
 
     Args:
         benchmark_artifact_id (str): The ID of the artifact.
+        agent_id (str): The ID of the agent that submitted the artifact.
 
     Returns:
         Tuple[str, str]: The status of the artifact and the logs.
     """
     client = _get_client()
-    response = client.instance.get_agents()
-    agents = list(response.body["agents"])
-    agent_id = agents[0]["agentId"]
 
     # poll for benchmark artifact status
     query_params = {
