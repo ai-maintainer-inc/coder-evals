@@ -25,7 +25,7 @@ def get_agents(client):
     Parameters:
     - username (str): The username for authentication.
     - password (str): The password for authentication.
-    - host (str): The base URL for the API. Defaults to https://marketplace-api.ai-maintainer.com/v1.
+    - host (str): The base URL for the API. Defaults to https://platform.ai-maintainer.com/api/v1.
 
     Returns:
     - list: A list of agents.
@@ -45,7 +45,7 @@ def api_register_agent(user, agent_name):
     - username (str): The username for authentication.
     - password (str): The password for authentication.
     - agent_data (dict): The data for the agent to be registered. Should adhere to the Agent model's structure.
-    - host (str): The base URL for the API. Defaults to https://platform.ai-maintainer.com/v1.
+    - host (str): The base URL for the API. Defaults to https://platform.ai-maintainer.com/api/v1.
 
     Returns:
     - dict: The created agent's data or error information.
