@@ -10,12 +10,35 @@ It will then go through the API steps 1 by 1.
 """
 import aim_platform_sdk
 from aim_platform_sdk import models
+from aim_platform_sdk.apis.tags import default_api
 from pathlib import Path
 import glob
 
 # update this import to use your interface here!
 # from agent_harness.aider_config.aider_interface import register_agent, start_agent_task
 from aim_git_util.git_util import GitRepo, create_url
+
+
+class PythonClientUser:
+    """
+    This is a class that represents a user of the Python Client and allows connection with the API and git host.
+    It has prod default values and allows easy authentication and user creation to our API.
+    """
+
+    def __init__(
+        self, username: str, password: str, email: str, api_host: str, git_host: str
+    ):
+        self.username = username
+        self.password = password
+        self.git_host = git_host
+        self.email = email
+        self.cfg = aim_platform_sdk.Configuration(
+            host=api_host,
+            username=self.username,
+            password=self.password,
+        )
+        self.api = aim_platform_sdk.ApiClient(self.cfg)
+        self.instance = default_api.DefaultApi(self.api)
 
 
 def get_agents(client):
@@ -151,7 +174,13 @@ def handle_bids(client, agent_id, code_path):
     return fork, bid_id, ticket, code_path + "/" + repo
 
 
-def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
+def upload_artifact(
+    client: PythonClientUser,
+    fork: GitRepo,
+    repo: str,
+    bid_id: str,
+    path: Path,
+):
     # list all files in repo path:
     files = glob.glob(path + "/**/*", recursive=True)
     fork.add(path, all=True)
@@ -170,7 +199,12 @@ def upload_artifact(client, fork: GitRepo, repo: str, bid_id: str, path: Path):
         ),
         draft=False,
     )
-    response = client.instance.create_artifact(req)
+    try:
+        response = client.instance.create_artifact(req)
+        assert response.response.status == 201
+    except aim_platform_sdk.ApiException as e:
+        print(f"Error creating artifact: {e}")
+        raise e
 
     # done to make sure we don't loop forever
     return response
