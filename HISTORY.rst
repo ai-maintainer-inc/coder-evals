@@ -13,3 +13,8 @@ History
 
 * Open source preparation
 * Fixing a variety of branding and packaging problems
+
+0.1.3 (2023-09-18)
+------------------
+
+* Fixes a bug that prevented benchmarking multiple agents
