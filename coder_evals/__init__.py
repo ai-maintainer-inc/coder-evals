@@ -10,7 +10,7 @@ from .agent_harness import (
     maybe_register_user,
     maybe_create_agent,
     get_benchmark_ids,
-    StartBenchmarkResult,
+    BenchmarkContext,
     start_benchmark,
     ask_question,
     submit_artifact,

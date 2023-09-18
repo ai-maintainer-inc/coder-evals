@@ -12,6 +12,7 @@ from coder_evals.api_comms import (
     handle_bids,
     upload_artifact,
     get_agents,
+    PythonClientUser,
 )
 
 from typing import List, Optional, Union, Tuple
@@ -19,28 +20,6 @@ from datetime import datetime
 from aim_platform_sdk.model.errors_response import ErrorsResponse
 from pathlib import Path
 from dataclasses import dataclass
-
-
-class PythonClientUser:
-    """
-    This is a class that represents a user of the Python Client and allows connection with the API and git host.
-    It has prod default values and allows easy authentication and user creation to our API.
-    """
-
-    def __init__(
-        self, username: str, password: str, email: str, api_host: str, git_host: str
-    ):
-        self.username = username
-        self.password = password
-        self.git_host = git_host
-        self.email = email
-        self.cfg = aim_platform_sdk.Configuration(
-            host=api_host,
-            username=self.username,
-            password=self.password,
-        )
-        self.api = aim_platform_sdk.ApiClient(self.cfg)
-        self.instance = default_api.DefaultApi(self.api)
 
 
 def _get_client():
@@ -63,7 +42,7 @@ def _get_client():
     return PythonClientUser(username, password, email, host, git_host)
 
 
-def _register_user() -> PythonClientUser:
+def _register_user() -> PythonClientUser | None:
     """
     Allows for the creation of a new user who wants to submit agents for benchmarking.
 
@@ -72,7 +51,7 @@ def _register_user() -> PythonClientUser:
         password (str): The password for the user.
 
     Returns:
-        None
+        client
     """
     client = _get_client()
 
@@ -84,7 +63,7 @@ def _register_user() -> PythonClientUser:
         response = client.instance.create_user(req)
         assert response.response.status == 201
         return client
-    except aim_platform_sdk.exceptions.ApiException as e:
+    except aim_platform_sdk.ApiException as e:
         assert e.status == 409
 
 
@@ -181,7 +160,6 @@ def get_benchmark_ids(
     Returns a list of benchmark IDs.
 
     Args:
-        client (ApiClient): The API client instance.
         benchmark_id (Optional[str]): The ID of the benchmark.
         author_id (Optional[str]): The ID of the author.
         author_name (Optional[str]): The name of the author.
@@ -232,16 +210,14 @@ def get_benchmark_ids(
 
 
 @dataclass
-class StartBenchmarkResult:
+class BenchmarkContext:
     fork: str
     bid_id: str
     ticket: dict
     cloned_path: Path
 
 
-def start_benchmark(
-    id: int, code_path: Path, agent_id: str = None
-) -> StartBenchmarkResult:
+def start_benchmark(id: int, code_path: Path, agent_id: str = None) -> BenchmarkContext:
     """
     Starts the process of running a benchmark with the given id. When this returns, the agent can start working on the code.
 
@@ -292,7 +268,7 @@ def start_benchmark(
             # wait for the bids to be accepted.
             fork, bid_id, ticket, cloned_path = handle_bids(client, agent_id, code_path)
             if fork:
-                return StartBenchmarkResult(fork, bid_id, ticket, cloned_path)
+                return BenchmarkContext(fork, bid_id, ticket, cloned_path)
             time.sleep(0.5)
 
 
@@ -310,7 +286,7 @@ def ask_question(ticket_id: int, question: str) -> None:
     return "No"
 
 
-def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, str]:
+def submit_artifact(ctx: BenchmarkContext) -> Tuple[str, str]:
     """
     Called when the agent is ready to submit the artifact. This will cause the code to be pushed to our git repo.
 
@@ -322,30 +298,29 @@ def submit_artifact(start_benchmark_result: StartBenchmarkResult) -> Tuple[str, 
     """
     response = upload_artifact(
         _get_client(),
-        start_benchmark_result.fork,
-        start_benchmark_result.ticket["code"]["repo"],
-        start_benchmark_result.bid_id,
-        start_benchmark_result.cloned_path,
+        ctx.fork,
+        ctx.ticket["code"]["repo"],
+        ctx.bid_id,
+        ctx.cloned_path,
     )
     benchmark_artifact_id = response.body["artifactId"]
-    return _get_artifact_status(benchmark_artifact_id)
+    agent_id = ctx.ticket["agentId"]
+    return _get_artifact_status(benchmark_artifact_id, agent_id)
 
 
-def _get_artifact_status(benchmark_artifact_id: str) -> Tuple[str, str]:
+def _get_artifact_status(benchmark_artifact_id: str, agent_id: str) -> Tuple[str, str]:
     """
     This assumes your agent has already submitted an artifact and is waiting for it to be evaluated.
     This polls the API for the status of the artifact and returns the status and logs after evaluation has finished.
 
     Args:
         benchmark_artifact_id (str): The ID of the artifact.
+        agent_id (str): The ID of the agent that submitted the artifact.
 
     Returns:
         Tuple[str, str]: The status of the artifact and the logs.
     """
     client = _get_client()
-    response = client.instance.get_agents()
-    agents = list(response.body["agents"])
-    agent_id = agents[0]["agentId"]
 
     # poll for benchmark artifact status
     query_params = {
