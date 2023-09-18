@@ -45,9 +45,9 @@ setup(
     packages=find_packages(include=["coder_evals"]),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/ai-maintainer-inc/agent_harness",
+    url="https://github.com/ai-maintainer-inc/coder-evals",
     # fmt: off
-    version='0.1.2',
+    version='0.1.3',
     # fmt: on
     zip_safe=False,
 )
